@@ -1,7 +1,7 @@
 // 인터넷 없이도 앱이 열리게 하는 서비스 워커.
 // 앱 파일은 네트워크를 먼저 시도해 수정 사항이 바로 반영되고, 표지는 한 번 본 것을 저장해 둔다.
 // API 요청과 동기화(POST)는 건드리지 않는다.
-const APP_CACHE = 'app-v1';
+const APP_CACHE = 'app-v2';
 const COVER_CACHE = 'covers-v1';
 const APP_FILES = ['./', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const NETWORK_WAIT = 3000; // 인터넷이 느리면 이만큼만 기다리고 저장본을 보여 준다
