@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4ecdf">
-<title>책탑 - 독서 기록</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="기록">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>기록</title>
 <style>
 :root{
   --bg:#f4ecdf;--card:#fbf6ec;--card2:#efe5d3;--line:#ded0b8;
@@ -99,6 +106,10 @@ header select{background:#eadfca;border-color:#d9c9ae}
 .stars{color:var(--accent2);letter-spacing:1px}
 .hs{position:relative;display:inline-block}
 .hs::before{content:'★';position:absolute;left:0;top:0;width:50%;overflow:hidden;white-space:nowrap}
+.syncChip{flex:none;font-size:11px;color:var(--sub);white-space:nowrap;padding:4px 6px}
+.syncChip.warn{color:var(--accent);font-weight:700}
+.snippet{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+mark{background:rgba(189,90,52,.22);color:inherit;border-radius:2px}
 .filterRow{display:flex;gap:8px;padding:0 16px 10px}
 .filterRow input{flex:1}
 .filterRow select{width:auto}
@@ -210,6 +221,7 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
 <section id="v-stack">
   <header>
     <h1>📚 <select id="yearSel"></select></h1>
+    <button class="syncChip hidden" id="syncChip" title="동기화 상태"></button>
     <button class="iconbtn" id="textStyleBtn" title="글자 색·크기" style="font-family:var(--serif);font-weight:600;font-size:20px">Aa</button>
     <button class="iconbtn" id="searchToggle" title="검색"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button>
   </header>
@@ -219,7 +231,7 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
     <button data-m="list">리스트형</button>
   </div>
   <div class="filterRow hidden" id="filterRow">
-    <input id="q" placeholder="제목·저자·메모 검색">
+    <input id="q" placeholder="제목·저자·감상·문장 검색">
     <select id="statusFilter">
       <option value="all">전체</option><option value="done">완독</option>
       <option value="reading">읽는 중</option><option value="stopped">중단</option>
@@ -278,6 +290,8 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
     <div class="field"><label>비밀 문구</label><input id="syncSecret" placeholder="내 다른 기기에도 같은 값을 넣으세요" autocomplete="off" spellcheck="false"></div>
     <div class="btns"><button class="btn" id="syncSave">저장하고 동기화</button><button class="btn ghost" id="syncOff">연결 끊기</button></div>
     <p class="hint" id="syncStatus"></p>
+    <div class="btns"><button class="btn ghost" id="codeMake">연결 코드 만들기</button><button class="btn ghost" id="codeUse">연결 코드 입력</button></div>
+    <p class="hint">연결 코드 하나로 내 다른 기기의 동기화와 책 정보 키를 한 번에 설정합니다. 독서 목표와 책등 글자 설정은 동기화로 맞춰집니다.</p>
   </div>
   <div class="sec">
     <h3>백업</h3>
@@ -477,7 +491,15 @@ const save=()=>{
   localStorage.setItem(LS_BOOKS,JSON.stringify(books));
   if(touched){saveSync();scheduleSync()}
 };
-const saveCfg=()=>localStorage.setItem(LS_CFG,JSON.stringify(cfg));
+const prefsOf=()=>JSON.stringify([cfg.goal,cfg.spineColor,cfg.spineSize]);
+let prefsKey=prefsOf();
+const saveCfg=()=>{
+  if(prefsOf()!==prefsKey){ // 목표와 책등 글자 설정이 바뀌면 내 다른 기기에도 알린다
+    prefsKey=prefsOf(); cfg.prefsAt=new Date().toISOString();
+    syncSt.prefsDirty=true; saveSync(); scheduleSync();
+  }
+  localStorage.setItem(LS_CFG,JSON.stringify(cfg));
+};
 
 /* ================== 유틸 ================== */
 const $=s=>document.querySelector(s);
@@ -642,18 +664,53 @@ const COMPARE=[ // 비교 대상 (cm)
 ].sort((a,b)=>a.cm-b.cm);
 const thickCm=b=>(b.pages||280)*0.005+0.3;
 
+// 띄어쓰기가 달라도 찾을 수 있게 글자 사이의 공백을 무시한다
+function searchRe(){
+  const chars=[...($('#q').value||'').replace(/\s+/g,'')];
+  return chars.length?new RegExp(chars.map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s*'),'i'):null;
+}
 function filtered(){
-  const q=($('#q').value||'').trim().toLowerCase(), st=$('#statusFilter').value;
-  return books.filter(b=>{
-    if(selYear!=='all'&&bookDate(b).slice(0,4)!==selYear) return false;
+  const re=searchRe(), st=$('#statusFilter').value;
+  const byDate=(a,b)=>bookDate(b).localeCompare(bookDate(a))||(b.createdAt||'').localeCompare(a.createdAt||'');
+  const list=books.filter(b=>{
+    if(!re&&selYear!=='all'&&bookDate(b).slice(0,4)!==selYear) return false; // 검색은 모든 연도에서 찾는다
     if(st!=='all'&&b.status!==st) return false;
-    if(q){const hay=[b.title,b.author,b.publisher,b.review,...(b.quotes||[]).map(x=>x.text)].join(' ').toLowerCase(); if(!hay.includes(q)) return false;}
-    return true;
-  }).sort((a,b)=>bookDate(b).localeCompare(bookDate(a))||(b.createdAt||'').localeCompare(a.createdAt||''));
+    return !re||re.test([b.title,b.author,b.publisher,b.isbn,b.category,b.review,...(b.quotes||[]).map(x=>x.text)].join('\n'));
+  });
+  if(!re) return list.sort(byDate);
+  const named=b=>re.test(b.title||'')||re.test(b.author||'')?0:1; // 제목·저자에서 찾은 책을 먼저
+  return list.sort((a,b)=>named(a)-named(b)||byDate(a,b));
+}
+const markHit=(text,re)=>{
+  const m=String(text||'').match(re); if(!m) return esc(text);
+  return esc(text.slice(0,m.index))+'<mark>'+esc(m[0])+'</mark>'+esc(text.slice(m.index+m[0].length));
+};
+// 감상이나 문장에서 찾은 경우 찾은 부분의 앞뒤를 보여 준다
+function searchSnippet(b,re){
+  const part=[['감상',b.review],...(b.quotes||[]).map(x=>['문장',x.text])].find(([,t])=>re.test(t||''));
+  if(!part||re.test(b.title||'')||re.test(b.author||'')) return '';
+  const text=part[1], at=text.match(re).index, from=Math.max(0,at-20);
+  return `<div class="snippet">${part[0]}: ${from?'…':''}${markHit(text.slice(from),re)}</div>`;
+}
+function renderSearch(list,re){
+  $('#stackWrap').classList.add('hidden'); $('#listWrap').classList.remove('hidden');
+  $('#textStyleBtn').classList.add('hidden');
+  const head=`<p class="hint" style="margin:0 0 4px">모든 연도에서 ${list.length}권 찾았어요.</p>`;
+  $('#listWrap').innerHTML=head+list.map(b=>`
+    <div class="item" data-id="${b.id}">
+      ${cvHtml(b)}
+      <div class="meta">
+        <div class="t">${markHit(b.title,re)}</div>
+        <div class="a">${markHit(b.author,re)}</div>
+        <div class="d"><span class="badge ${b.status}">${statusName[b.status]}</span>${esc(bookDate(b))} <span class="stars">${starStr(b.rating)}</span></div>
+        ${searchSnippet(b,re)}
+      </div>
+    </div>`).join('');
 }
 function renderStack(){
   fillYearSel($('#yearSel'),selYear,true);
-  const list=filtered();
+  const list=filtered(), re=searchRe();
+  if(re) return renderSearch(list,re);
   $('#textStyleBtn').classList.toggle('hidden',stackMode!=='stack');
   $('#stackWrap').classList.toggle('hidden',stackMode==='list');
   $('#listWrap').classList.toggle('hidden',stackMode!=='list');
@@ -1081,7 +1138,9 @@ function openSearch(preset={}){
   m=>{
     const go=async()=>{
       const q=m.querySelector('#sq').value.trim(); if(!q) return;
-      const box=m.querySelector('#results'); box.innerHTML='<p class="hint"><span class="spin"></span> 검색 중…</p>';
+      const box=m.querySelector('#results');
+      if(!navigator.onLine){box.innerHTML='<p class="hint">인터넷이 끊겨 책을 검색할 수 없어요. <b>직접 입력</b>으로 기록하면 연결된 뒤 시트에 올라갑니다.</p>';return}
+      box.innerHTML='<p class="hint"><span class="spin"></span> 검색 중…</p>';
       const res=await searchBooks(q);
       if(!res.length){box.innerHTML='<p class="hint">검색 결과가 없어요. 다른 검색어나 직접 입력을 이용해 주세요.'+(cfg.kakaoKey?'':'<br>(키 없는 무료 검색 한도가 찼을 수 있어요 → 설정에서 카카오 키 등록)')+'</p>';return}
       box.innerHTML=res.map((r,i)=>`<div class="res" data-i="${i}">${cvHtml(r)}<div class="meta"><b>${esc(r.title)}</b><span>${esc(r.author)}${r.publisher?' · '+esc(r.publisher):''}${r.pub?' · '+esc(r.pub.slice(0,4)):''}</span></div></div>`).join('');
@@ -1317,12 +1376,14 @@ $('#sampleBtn').onclick=async e=>{
 /* ================== 구글 시트 동기화 ================== */
 const SYNC_URL_RE=/^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
 const SYNC_BATCH=20;
+const PREFS_ID='__settings__'; // 개인 설정은 시트의 책 줄과 같은 형식의 특별한 줄 하나로 저장한다
 let syncBusy=false, syncAgain=false, syncTimer=null, syncError='', syncRejected={}, syncTried=0, syncWarned=false;
 const syncOn=()=>!!(cfg.syncUrl&&cfg.syncSecret);
 function scheduleSync(){
   if(!syncOn()) return;
   clearTimeout(syncTimer);
   syncTimer=setTimeout(syncNow,2000);
+  drawSyncStatus();
 }
 function nextBatch(){
   const del=Object.entries(syncSt.deleted).map(([id,updatedAt])=>({id,updatedAt,deleted:true}));
@@ -1333,7 +1394,23 @@ function nextBatch(){
     const {spine,...rest}=b;
     ups.push(rest);
   }
+  if(syncSt.prefsDirty){
+    if(!cfg.prefsAt) cfg.prefsAt=new Date().toISOString();
+    ups.push({id:PREFS_ID,title:'(앱 설정)',updatedAt:cfg.prefsAt,goal:cfg.goal,spineColor:cfg.spineColor,spineSize:cfg.spineSize});
+  }
   return [...del,...ups];
+}
+function mergePrefs(row){
+  if(!row){syncSt.prefsDirty=true;return false} // 시트에 아직 없으면 올린다
+  if(toTime(row.updatedAt)<=toTime(cfg.prefsAt)) return false;
+  syncSt.prefsDirty=false; cfg.prefsAt=row.updatedAt;
+  if(+row.goal>=1) cfg.goal=+row.goal;
+  if(/^(auto|#[0-9a-f]{6})$/i.test(row.spineColor||'')) cfg.spineColor=row.spineColor;
+  if(+row.spineSize>=10&&+row.spineSize<=22) cfg.spineSize=+row.spineSize;
+  prefsKey=prefsOf();
+  localStorage.setItem(LS_CFG,JSON.stringify(cfg));
+  if(view==='set') $('#goalIn').value=cfg.goal;
+  return true;
 }
 async function syncPost(changes){
   const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),180000);
@@ -1356,12 +1433,14 @@ function mergeRemote(res,sent){
   const undirty=id=>{syncSt.dirty=syncSt.dirty.filter(x=>x!==id)};
   // 보내는 동안 다시 고친 책은 다음 차례에 또 올린다
   sent.forEach(s=>{
+    if(s.id===PREFS_ID){ if(cfg.prefsAt===s.updatedAt) syncSt.prefsDirty=false; return; }
     if(s.deleted){ if(syncSt.deleted[s.id]===s.updatedAt) delete syncSt.deleted[s.id]; return; }
     const local=books.find(b=>b.id===s.id);
     if(!local||local.updatedAt===s.updatedAt) undirty(s.id);
   });
   (res.rejected||[]).forEach(r=>{syncRejected[r.id]=r.error; undirty(r.id)});
-  const rows=(res.rows||[]).filter(r=>/^[\w-]+$/.test(r.id||''));
+  if(mergePrefs((res.rows||[]).find(r=>r.id===PREFS_ID))) fix();
+  const rows=(res.rows||[]).filter(r=>/^[\w-]+$/.test(r.id||'')&&r.id!==PREFS_ID);
   rows.forEach(raw=>{
     const i=books.findIndex(b=>b.id===raw.id), local=books[i], pending=syncSt.dirty.includes(raw.id);
     if(raw.deleted){
@@ -1387,6 +1466,7 @@ function mergeRemote(res,sent){
 }
 async function syncNow(){
   if(!syncOn()) return false;
+  if(!navigator.onLine){drawSyncStatus();return false} // 끊긴 동안은 기기에만 저장하고 연결되면 올린다
   if(syncBusy){syncAgain=true;return false}
   clearTimeout(syncTimer);
   syncBusy=true; syncAgain=false; syncTried=Date.now(); drawSyncStatus();
@@ -1418,13 +1498,28 @@ async function syncNow(){
   if(syncAgain) scheduleSync();
   return ok;
 }
+const syncWaiting=()=>syncSt.dirty.length+Object.keys(syncSt.deleted).length;
+function drawSyncChip(){
+  const chip=$('#syncChip'), n=syncWaiting(), wait=n?` · 대기 ${n}`:'';
+  chip.classList.toggle('hidden',!syncOn());
+  let text='✓ 동기화됨', warn=false;
+  if(syncBusy) text='동기화 중…';
+  else if(!navigator.onLine) text='오프라인'+wait;
+  else if(syncError){text='⚠ 동기화 실패';warn=true}
+  else if(Object.keys(syncRejected).length){text='⚠ 못 올린 책 있음';warn=true}
+  else if(n||syncSt.prefsDirty) text='대기 중'+wait;
+  else if(!syncSt.lastSync) text='연결 대기';
+  chip.textContent=text; chip.classList.toggle('warn',warn);
+}
 function drawSyncStatus(){
+  drawSyncChip();
   const el=$('#syncStatus'); if(!el) return;
   const rej=Object.keys(syncRejected).map(id=>books.find(b=>b.id===id)?.title).filter(Boolean);
   const when=syncSt.lastSync?new Date(syncSt.lastSync).toLocaleString('ko-KR',{dateStyle:'short',timeStyle:'short'}):'';
   const lines=[];
   if(!syncOn()) lines.push('아직 연결하지 않았어요.');
   else if(syncBusy) lines.push('동기화 중…');
+  else if(!navigator.onLine) lines.push('인터넷이 끊겨 기기에 먼저 저장합니다. 연결되면 올립니다.');
   else if(syncError) lines.push('❌ '+syncError);
   else if(when) lines.push('✅ 마지막 동기화: '+when);
   if(syncOn()&&syncError&&syncSt.dirty.length) lines.push(`올리지 못한 책 ${syncSt.dirty.length}권은 다음에 다시 시도합니다.`);
@@ -1470,11 +1565,72 @@ $('#syncOff').onclick=()=>{
   $('#syncUrl').value='';$('#syncSecret').value='';drawSyncStatus();
 };
 addEventListener('online',()=>{syncNow()});
+addEventListener('offline',drawSyncStatus);
+$('#syncChip').onclick=()=>{go('set');$('#syncStatus').scrollIntoView({block:'center'})};
+
+/* 연결 코드: 내 다른 기기로 동기화 주소·비밀 문구·책 정보 키를 옮긴다 */
+const CODE_PREFIX='CHAEKTAP1.';
+function makeCode(withKeys){
+  const o={u:cfg.syncUrl,s:cfg.syncSecret};
+  if(withKeys){o.k=cfg.kakaoKey;o.n=cfg.nlKey;o.g=cfg.googleKey}
+  return CODE_PREFIX+btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o))));
+}
+function readCode(text){
+  const t=String(text||'').replace(/\s+/g,'');
+  if(!t.startsWith(CODE_PREFIX)) throw new Error('format');
+  const o=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.slice(CODE_PREFIX.length)),c=>c.charCodeAt(0))));
+  if(o.u&&!SYNC_URL_RE.test(o.u)) throw new Error('url'); // 다른 곳으로 기록을 보내게 만드는 코드는 거절한다
+  if(!!o.u!==!!o.s) throw new Error('format');
+  return o;
+}
+$('#codeMake').onclick=()=>{
+  if(!syncOn()&&!cfg.kakaoKey&&!cfg.nlKey&&!cfg.googleKey) return toast('옮길 연결 정보가 아직 없어요');
+  modal(`<div class="sheetHead"><h2>연결 코드</h2><button class="iconbtn" data-close>✕</button></div>
+    <p class="hint" style="color:var(--accent);font-weight:700">이 코드를 아는 사람은 내 기록을 읽고 고칠 수 있고 내 API 키를 쓸 수 있습니다. 내 기기로만 옮기고, 형에게도 보내지 마세요.</p>
+    <label class="hint" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="codeKeys" checked style="width:auto">책 정보 API 키도 함께 옮기기</label>
+    <textarea id="codeText" readonly style="height:90px;font-size:11px;word-break:break-all"></textarea>
+    <div class="btns"><button class="btn" id="codeCopy">복사</button>${navigator.share?'<button class="btn ghost" id="codeShare">보내기</button>':''}</div>
+    <p class="hint">다른 기기의 설정에서 <b>연결 코드 입력</b>에 붙여 넣으세요. 옮긴 뒤에는 메신저에 남은 코드를 지우는 것이 안전합니다.</p>`,
+  m=>{
+    const ta=m.querySelector('#codeText'), keys=m.querySelector('#codeKeys');
+    const draw=()=>{ta.value=makeCode(keys.checked)};
+    keys.onchange=draw; draw();
+    m.querySelector('#codeCopy').onclick=async()=>{
+      try{await navigator.clipboard.writeText(ta.value)}catch(_){ta.select();document.execCommand('copy')}
+      toast('복사했어요');
+    };
+    const sh=m.querySelector('#codeShare');
+    if(sh) sh.onclick=()=>navigator.share({text:ta.value}).catch(()=>{});
+  });
+};
+$('#codeUse').onclick=()=>{
+  modal(`<div class="sheetHead"><h2>연결 코드 입력</h2><button class="iconbtn" data-close>✕</button></div>
+    <p class="hint">내 다른 기기에서 만든 코드를 붙여 넣으세요. 이 기기의 기록은 지워지지 않고 시트의 기록과 합쳐집니다.</p>
+    <textarea id="codeIn" style="height:90px;font-size:11px;word-break:break-all" autocomplete="off" spellcheck="false" placeholder="${CODE_PREFIX}…"></textarea>
+    <button class="btn" id="codeApply" style="margin-top:8px">적용하고 동기화</button>`,
+  m=>{
+    m.querySelector('#codeApply').onclick=async()=>{
+      let o;
+      try{o=readCode(m.querySelector('#codeIn').value)}catch(_){return toast('연결 코드가 올바르지 않아요')}
+      if(o.u&&cfg.syncUrl&&cfg.syncUrl!==o.u&&!confirm('이 기기는 이미 다른 시트에 연결되어 있어요. 이 코드의 시트로 바꾸고 기기의 기록을 그 시트에 합칠까요?')) return;
+      if(o.u){cfg.syncUrl=o.u;cfg.syncSecret=o.s}
+      if(o.k) cfg.kakaoKey=o.k;
+      if(o.n) cfg.nlKey=o.n;
+      if(o.g) cfg.googleKey=o.g;
+      saveCfg(); syncError=''; closeModal();
+      if(view==='set') render();
+      toast('연결 정보를 적용했어요');
+      if(o.u&&await syncNow()) toast('동기화했어요');
+    };
+  });
+};
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&Date.now()-syncTried>30000) syncNow();
 });
 
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();
+drawSyncStatus();
 syncNow();
 </script>
 </body>
