@@ -35,7 +35,7 @@ header select{width:auto;padding:6px 10px;font-weight:700;font-size:16px;backgro
 .seg button.on{background:var(--accent);color:#fff}
 
 /* ----- 쌓아보기 ----- */
-#stackWrap{padding:10px 16px 30px;display:flex;flex-direction:column;align-items:center}
+#stackWrap{isolation:isolate;padding:10px 16px 30px;display:flex;flex-direction:column;align-items:center}
 .topper{display:flex;flex-direction:column;align-items:center;margin-bottom:6px}
 .bubble{border-radius:16px;padding:10px 18px;text-align:center;position:relative;margin-bottom:12px;background:var(--paper);color:var(--ink);box-shadow:0 4px 14px rgba(90,60,30,.16)}
 .bubble b{font-size:17px}
@@ -53,9 +53,9 @@ header select{background:#eadfca;border-color:#d9c9ae}
 .seg{border-radius:99px;background:var(--card);box-shadow:0 3px 10px rgba(90,60,30,.14)}
 .seg button{border-radius:99px}
 /* 쌓아보기 책등: 표지 조각 위에 배경 없는 글자를 얹음 */
-.spine{position:relative;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);color:var(--fg);cursor:pointer;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 12px;margin-top:1px;border-radius:2px}
+.spine{position:relative;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);color:var(--fg);cursor:pointer;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 12px;border-radius:2px;box-shadow:0 2px 3px -1px rgba(35,20,8,.5)}
 .spine .sp-img{position:absolute;background-repeat:no-repeat;background-size:auto 100%;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg)}
-.spine:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(40,25,10,.38),inset 0 2px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(40,25,10,.3)}
+.spine:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;border-radius:2px;box-shadow:inset 1px 0 0 rgba(40,25,10,.2),inset -1px 0 0 rgba(40,25,10,.2),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(40,25,10,.28)}
 .spine .sp-text{position:relative;z-index:3;display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;text-shadow:0 0 3px var(--ts),0 0 2px var(--ts),0 1px 1px var(--ts)}
 .spine .sp-t{font-weight:800;font-size:var(--tsize,14px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.01em}
 .spine .sp-a{font-weight:600;font-size:calc(var(--tsize,14px)*.78);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:100;min-width:0}
@@ -500,7 +500,7 @@ function renderStack(){
     <div class="bubble"><b>${total.toFixed(1)}cm · ${stack.length}권</b>
       <small>${cmp.e} ${cmp.n}보다 높아요!${next?` · ${next.e} ${next.n}까지 ${(next.cm-total).toFixed(0)}cm`:''}</small></div>
     <div class="mascot">${cmp.e}</div></div>`;
-  html+=[...reading,...stack].map(b=>spineHtml(b)).join('');
+  html+=[...reading,...stack].map((b,i,all)=>spineHtml(b,all.length-i)).join('');
   html+=`<div class="ground"></div>`;
   $('#stackWrap').innerHTML=html;
   queueSpineColors();
@@ -605,12 +605,12 @@ function spineInner(b,room){
   const showAuthor=author&&room-b.title.length*size*1.04>=author.length*size*.8+12;
   return `<span class="sp-text"><span class="sp-t">${esc(b.title)}</span>${showAuthor?`<span class="sp-a">${esc(author)}</span>`:''}</span>${b.status==='reading'?'<i class="ribbon"></i>':''}`;
 }
-function spineHtml(b){
+function spineHtml(b,z=0){
   const h=Math.round(Math.max(30,Math.min(76,20+(b.pages||280)/11)));
   // 너비: 실제 세로 길이(판형)가 있으면 반영, 없으면 임의
   const w=b.heightMm?Math.max(62,Math.min(92,70+(b.heightMm-180)*0.33)):70+hash(b.id)%20;
   const px=Math.round((Math.min(innerWidth,520)-32)*w/100);
-  return `<div class="spine" data-id="${b.id}" style="${spineVars(b)}height:${h}px;width:${w}%">${spineImg(b,`width:${h}px;height:${px}px;`)}${spineInner(b,px-30)}</div>`;
+  return `<div class="spine" data-id="${b.id}" style="${spineVars(b)}height:${h}px;width:${w}%;z-index:${z}">${spineImg(b,`width:${h}px;height:${px}px;`)}${spineInner(b,px-30)}</div>`;
 }
 /* ---------- 책장 보기: 평점별로 표지를 가로 진열 ---------- */
 let shelfRating='all';
