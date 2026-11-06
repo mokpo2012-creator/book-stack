@@ -97,6 +97,8 @@ header select{background:#eadfca;border-color:#d9c9ae}
 .badge.reading{background:#e3ebd3;color:var(--good)}
 .badge.stopped{background:#f4dcd4;color:#a8432d}
 .stars{color:var(--accent2);letter-spacing:1px}
+.hs{position:relative;display:inline-block}
+.hs::before{content:'★';position:absolute;left:0;top:0;width:50%;overflow:hidden;white-space:nowrap}
 .filterRow{display:flex;gap:8px;padding:0 16px 10px}
 .filterRow input{flex:1}
 .filterRow select{width:auto}
@@ -105,19 +107,21 @@ header select{background:#eadfca;border-color:#d9c9ae}
 .cv{background:var(--card2) center/cover no-repeat;display:grid;place-items:center;color:var(--sub);font-size:11px;text-align:center;overflow:hidden}
 
 /* ----- 달력 ----- */
-.calHead{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 10px}
-.calHead b{font-size:20px}
-.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 10px}
+.calHead{display:flex;align-items:center;justify-content:space-between;padding:calc(8px + env(safe-area-inset-top)) 6px 2px}
+.calHead b{font-size:20px;white-space:nowrap}
+.calNav,.calTools{display:flex;align-items:center}
+.calTools .iconbtn{width:36px;font-size:17px}
+.calTools .iconbtn:disabled{opacity:.3}
+.calZoom{overflow:hidden;touch-action:pan-y}
+.calZoom.zoomed{touch-action:none;cursor:grab}
+.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 4px;transform-origin:0 0}
 .dow{text-align:center;font-size:12px;color:var(--sub);padding:6px 0}
-.dow.sun,.day.sun .n{color:#c0492f}.dow.sat,.day.sat .n{color:#3a6ea5}
-.day{aspect-ratio:.68;border-radius:6px;position:relative;background:var(--card);overflow:hidden}
-.day.out{background:transparent}
-.day .n{position:absolute;top:3px;left:5px;font-size:12px;z-index:2;text-shadow:0 0 3px #fff,0 0 2px #fff}
-.day.today{outline:2px solid var(--accent)}
+.day{aspect-ratio:var(--calAspect,.68);position:relative;overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.day .n{position:absolute;top:4px;left:6px;font-size:13px}
+.day.today .n{font-weight:800;text-decoration:underline;text-underline-offset:3px}
 .day .cvfill{position:absolute;inset:0;background:center/cover no-repeat}
-.day .cvfill.txt{display:flex;align-items:center;justify-content:center;font-size:10px;padding:14px 3px 3px;text-align:center;color:#2a2224;font-weight:700;line-height:1.2}
+.day .cvfill.txt{display:flex;align-items:center;justify-content:center;font-size:10px;padding:3px;text-align:center;color:var(--text);background:var(--card);border:1px solid var(--line);font-weight:700;line-height:1.2}
 .day .more{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;border-radius:99px;padding:1px 6px;z-index:2}
-.day .readbar{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--good);opacity:.7}
 .calSum{margin:14px 16px;padding:12px 14px;background:var(--card);border-radius:var(--radius);display:flex;justify-content:space-around;text-align:center}
 .calSum b{display:block;font-size:20px;color:var(--accent2)}
 .calSum small{color:var(--sub)}
@@ -179,9 +183,11 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
 .statusPick{display:flex;gap:6px}
 .statusPick button{flex:1;padding:9px;border-radius:10px;background:var(--card2);color:var(--sub);font-size:13px}
 .statusPick button.on{background:var(--accent);color:#fff}
-.starPick{display:flex;gap:4px;font-size:30px}
-.starPick button{color:#d8cab2;padding:0 2px;line-height:1}
+.starPick{display:flex;align-items:center;gap:4px;font-size:38px}
+.starPick button{position:relative;color:#d8cab2;padding:0;line-height:1}
 .starPick button.on{color:var(--accent2)}
+.starPick button.half::before{content:'★';position:absolute;left:0;top:0;width:50%;overflow:hidden;color:var(--accent2)}
+.starPick small{font-size:14px;color:var(--sub);margin-left:6px}
 .quoteList .q{background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.55;display:flex;gap:8px}
 .quoteList .q p{margin:0;flex:1}
 .quoteList .q small{color:var(--sub)}
@@ -225,16 +231,19 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
 
 <!-- ===== 달력 ===== -->
 <section id="v-cal" class="hidden">
-  <header>
-    <h1>🗓️ 독서 달력</h1>
-    <button class="iconbtn" id="todayBtn" title="오늘">📍</button>
-  </header>
   <div class="calHead">
-    <button class="iconbtn" id="prevM">‹</button>
-    <b id="calTitle"></b>
-    <button class="iconbtn" id="nextM">›</button>
+    <div class="calNav">
+      <button class="iconbtn" id="prevM">‹</button>
+      <b id="calTitle"></b>
+      <button class="iconbtn" id="nextM">›</button>
+    </div>
+    <div class="calTools">
+      <button class="iconbtn" id="todayBtn" title="오늘">📍</button>
+      <button class="iconbtn" id="calOut" title="축소" aria-label="축소">－</button>
+      <button class="iconbtn" id="calIn" title="확대" aria-label="확대">＋</button>
+    </div>
   </div>
-  <div class="calGrid" id="calGrid"></div>
+  <div class="calZoom" id="calZoom"><div class="calGrid" id="calGrid"></div></div>
   <div class="calSum" id="calSum"></div>
   <div class="list" id="calList"></div>
 </section>
@@ -262,8 +271,17 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
     <pre id="testOut" class="hint hidden" style="white-space:pre-wrap;background:var(--card2);padding:10px;border-radius:8px;font-size:11px"></pre>
   </div>
   <div class="sec">
+    <h3>구글 시트 동기화</h3>
+    <p class="hint">내 구글 시트에 기록을 저장해 내 기기끼리 맞춥니다. 시트는 사람마다 따로 만들기 때문에 서로의 기록은 섞이지 않습니다.</p>
+    <button class="btn ghost" id="syncGuide">📋 처음 연결하기 (시트 만들기 안내)</button>
+    <div class="field" style="margin-top:10px"><label>Apps Script 웹 앱 주소</label><input id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false"></div>
+    <div class="field"><label>비밀 문구</label><input id="syncSecret" placeholder="내 다른 기기에도 같은 값을 넣으세요" autocomplete="off" spellcheck="false"></div>
+    <div class="btns"><button class="btn" id="syncSave">저장하고 동기화</button><button class="btn ghost" id="syncOff">연결 끊기</button></div>
+    <p class="hint" id="syncStatus"></p>
+  </div>
+  <div class="sec">
     <h3>백업</h3>
-    <p class="hint">기록은 이 기기 브라우저에만 저장됩니다. 주기적으로 백업 파일을 내려받아 두세요.</p>
+    <p class="hint">동기화를 켜지 않으면 기록은 이 기기 브라우저에만 저장됩니다. 주기적으로 백업 파일을 내려받아 두세요.</p>
     <div class="btns">
       <button class="btn ghost" id="exportBtn">⬇️ 내보내기</button>
       <button class="btn ghost" id="importBtn">⬆️ 가져오기</button>
@@ -292,13 +310,173 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
 <div id="modalRoot"></div>
 <input type="file" id="coverFile" accept="image/*" class="hidden">
 
+<!-- 사용자가 자기 구글 시트에 붙여 넣는 Apps Script. __SECRET__ 자리에 비밀 문구를 넣어 복사한다 -->
+<script type="text/plain" id="gsSource">// 책탑 동기화 스크립트. 시트의 열 순서를 바꾸지 마세요.
+const SECRET = '__SECRET__';
+const SHEET_NAME = '책탑';
+const FOLDER_NAME = '책탑 표지';
+const COLS = [['id','ID'],['isbn','ISBN'],['title','제목'],['author','저자'],['publisher','출판사'],['cover','표지'],
+  ['pages','쪽수'],['widthMm','가로(mm)'],['heightMm','세로(mm)'],['category','분류'],['status','상태'],['start','시작일'],
+  ['end','완독일'],['rating','별점'],['review','감상'],['quotes','문장'],['createdAt','등록 시각'],['updatedAt','수정 시각'],
+  ['deleted','삭제'],['extra','기타']];
+const KEYS = COLS.map(c => c[0]);
+const NUMBERS = ['pages', 'widthMm', 'heightMm', 'rating'];
+const CELL_LIMIT = 50000;
+
+function json_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+function doGet() {
+  return json_({ ok: true, app: 'bookstack' });
+}
+function doPost(e) {
+  let req;
+  try { req = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad_request' }); }
+  if (SECRET.indexOf('__') === 0 || req.secret !== SECRET) return json_({ ok: false, error: 'secret' });
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (err) { return json_({ ok: false, error: 'busy' }); }
+  try {
+    return json_(sync_(req.changes || []));
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+function time_(s) {
+  return Date.parse(s) || 0;
+}
+function sheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) sh = ss.insertSheet(SHEET_NAME);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, KEYS.length).setValues([COLS.map(c => c[1])]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+function toRow_(b) {
+  const extra = {};
+  Object.keys(b).forEach(k => { if (KEYS.indexOf(k) < 0) extra[k] = b[k]; });
+  return KEYS.map(k => {
+    if (k === 'quotes') return b.quotes && b.quotes.length ? JSON.stringify(b.quotes) : '';
+    if (k === 'extra') return Object.keys(extra).length ? JSON.stringify(extra) : '';
+    if (k === 'deleted') return b.deleted ? '삭제됨' : '';
+    return b[k] === undefined || b[k] === null ? '' : String(b[k]);
+  });
+}
+function fromRow_(row) {
+  const v = {};
+  KEYS.forEach((k, i) => { v[k] = row[i]; });
+  if (v.deleted) return { id: v.id, updatedAt: v.updatedAt, deleted: true };
+  let b = {};
+  KEYS.forEach(k => {
+    if (k === 'quotes' || k === 'extra' || k === 'deleted' || v[k] === '') return;
+    b[k] = NUMBERS.indexOf(k) >= 0 ? Number(v[k]) || 0 : v[k];
+  });
+  // 시트에서 직접 고쳐 형식이 깨져도 글자를 잃지 않게 한다
+  try { b.quotes = v.quotes ? JSON.parse(v.quotes) : []; } catch (err) { b.quotes = [{ text: v.quotes, page: '' }]; }
+  try { if (v.extra) b = Object.assign(JSON.parse(v.extra), b); } catch (err) {}
+  return b;
+}
+function folder_() {
+  const it = DriveApp.getFoldersByName(FOLDER_NAME);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
+}
+// 직접 찍은 사진은 칸에 들어가지 않아 드라이브에 저장하고 시트에는 주소만 적는다
+function saveCover_(b) {
+  const m = String(b.cover).match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+  if (!m) return '';
+  const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], b.id + '.jpg');
+  const file = folder_().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w600';
+}
+function trashCover_(url) {
+  const m = String(url).match(/^https:\/\/drive\.google\.com\/thumbnail\?id=([\w-]+)/);
+  if (!m) return;
+  try { DriveApp.getFileById(m[1]).setTrashed(true); } catch (err) {}
+}
+function sync_(changes) {
+  const sh = sheet_(), n = KEYS.length, last = sh.getLastRow();
+  const values = last > 1 ? sh.getRange(2, 1, last - 1, n).getDisplayValues() : [];
+  const rowOf = {}, cur = {}, rejected = [];
+  let next = last + 1;
+  values.forEach((row, i) => {
+    if (!row[0]) return;
+    rowOf[row[0]] = i + 2;
+    cur[row[0]] = fromRow_(row);
+  });
+  changes.forEach(c => {
+    if (!c || !/^[\w-]+$/.test(c.id)) { rejected.push({ id: c && c.id, error: 'bad_id' }); return; }
+    const old = cur[c.id];
+    if (old && time_(old.updatedAt) >= time_(c.updatedAt)) return;
+    try {
+      const b = c.deleted ? { id: c.id, updatedAt: c.updatedAt, deleted: true } : Object.assign({}, c);
+      const isPhoto = String(b.cover || '').indexOf('data:') === 0;
+      const tooLong = toRow_(isPhoto ? Object.assign({}, b, { cover: '' }) : b).some(v => v.length >= CELL_LIMIT);
+      if (tooLong) throw new Error('too_long');
+      if (isPhoto) b.cover = saveCover_(b);
+      const row = toRow_(b);
+      let r = rowOf[c.id];
+      if (!r) {
+        r = next++;
+        if (r > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 100);
+        rowOf[c.id] = r;
+      }
+      // 글자 형식으로 먼저 지정해야 날짜와 ISBN이 자동 변환되지 않는다
+      sh.getRange(r, 1, 1, n).setNumberFormat('@').setValues([row]);
+      if (old && old.cover && old.cover !== b.cover) trashCover_(old.cover);
+      cur[c.id] = fromRow_(row);
+    } catch (err) {
+      rejected.push({ id: c.id, error: err.message });
+    }
+  });
+  return { ok: true, rows: Object.keys(cur).map(id => cur[id]), rejected: rejected };
+}
+</script>
+
 <script>
 /* ================== 저장소 ================== */
-const LS_BOOKS='bookstack.books', LS_CFG='bookstack.cfg';
+const LS_BOOKS='bookstack.books', LS_CFG='bookstack.cfg', LS_SYNC='bookstack.sync';
 let books = JSON.parse(localStorage.getItem(LS_BOOKS)||'[]');
-let cfg = Object.assign({goal:30,kakaoKey:'',googleKey:'',nlKey:'',spineColor:'auto',spineSize:14}, JSON.parse(localStorage.getItem(LS_CFG)||'{}'));
+let cfg = Object.assign({goal:30,kakaoKey:'',googleKey:'',nlKey:'',spineColor:'auto',spineSize:14,syncUrl:'',syncSecret:''}, JSON.parse(localStorage.getItem(LS_CFG)||'{}'));
 books.forEach(b=>{if(/^\d$/.test(b.category||'')) b.category=['총류','철학','종교','사회과학','자연과학','기술과학','예술','언어','문학','역사'][+b.category]}); // 초기 버전의 숫자 분류 정리
-const save=()=>localStorage.setItem(LS_BOOKS,JSON.stringify(books));
+// dirty: 시트에 올려야 할 책 id, deleted: 시트에 알려야 할 삭제 {id:시각}
+let syncSt=Object.assign({dirty:[],deleted:{},lastSync:'',url:''},JSON.parse(localStorage.getItem(LS_SYNC)||'{}'));
+const saveSync=()=>localStorage.setItem(LS_SYNC,JSON.stringify(syncSt));
+const toTime=s=>Date.parse(s)||0;
+// spine은 기기마다 계산하는 캐시라 수정으로 치지 않는다. 빈 값은 시트에 저장되지 않으므로 없는 것과 같게 본다
+const bookKey=b=>JSON.stringify(Object.keys(b).filter(k=>{
+  const v=b[k];
+  return k!=='spine'&&k!=='updatedAt'&&v!==''&&v!==0&&v!=null&&!(Array.isArray(v)&&!v.length);
+}).sort().map(k=>[k,b[k]]));
+books.forEach(b=>{if(!b.updatedAt) b.updatedAt=b.createdAt||new Date(0).toISOString()});
+let snap=new Map(books.map(b=>[b.id,bookKey(b)]));
+// 모든 수정이 여기를 지나므로 직전 저장과 비교해 수정 시각과 삭제 표시를 남긴다
+const save=()=>{
+  const now=new Date().toISOString(), alive=new Set();
+  let touched=false;
+  books.forEach(b=>{
+    alive.add(b.id);
+    const k=bookKey(b);
+    if(snap.get(b.id)!==k){
+      b.updatedAt=new Date(Math.max(Date.now(),toTime(b.updatedAt)+1)).toISOString();
+      snap.set(b.id,k);
+      if(!syncSt.dirty.includes(b.id)) syncSt.dirty.push(b.id);
+      delete syncSt.deleted[b.id];
+      touched=true;
+    }
+  });
+  for(const id of [...snap.keys()]) if(!alive.has(id)){
+    syncSt.deleted[id]=now; snap.delete(id);
+    syncSt.dirty=syncSt.dirty.filter(x=>x!==id);
+    touched=true;
+  }
+  localStorage.setItem(LS_BOOKS,JSON.stringify(books));
+  if(touched){saveSync();scheduleSync()}
+};
 const saveCfg=()=>localStorage.setItem(LS_CFG,JSON.stringify(cfg));
 
 /* ================== 유틸 ================== */
@@ -311,7 +489,12 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const hash=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
 const PALETTE=['#f7a8a0','#f9c9c4','#f4b183','#f7d58b','#bfe3a4','#a8d8d0','#a9c8f0','#c6b6f0','#f0b6d8','#e8e1d4','#f29e93','#ffd1a9'];
 const colorOf=b=>PALETTE[hash(b.id+b.title)%PALETTE.length];
-const starStr=r=>r?'★'.repeat(r)+'☆'.repeat(5-r):'';
+const starStr=r=>{
+  if(!r) return '';
+  const full=Math.floor(r), half=r>full?1:0;
+  return '★'.repeat(full)+(half?'<span class="hs">☆</span>':'')+'☆'.repeat(5-full-half);
+};
+const starTxt=r=>r?'★'.repeat(Math.floor(r))+'☆'.repeat(5-Math.floor(r))+` ${r}점`:'';
 const statusName={done:'완독',reading:'읽는 중',stopped:'중단'};
 const bookDate=b=>b.end||b.start||b.createdAt?.slice(0,10)||'';
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
@@ -430,7 +613,7 @@ function render(){
   if(view==='stack') renderStack();
   if(view==='cal') renderCal();
   if(view==='stats') renderStats();
-  if(view==='set'){ $('#goalIn').value=cfg.goal; $('#kakaoKey').value=cfg.kakaoKey; $('#googleKey').value=cfg.googleKey; $('#nlKey').value=cfg.nlKey; }
+  if(view==='set'){ $('#goalIn').value=cfg.goal; $('#kakaoKey').value=cfg.kakaoKey; $('#googleKey').value=cfg.googleKey; $('#nlKey').value=cfg.nlKey; $('#syncUrl').value=cfg.syncUrl; $('#syncSecret').value=cfg.syncSecret; drawSyncStatus(); }
 }
 
 /* ================== 책탑 ================== */
@@ -569,7 +752,7 @@ function loadPixels(src){
 // 카카오 표지는 브라우저에서 픽셀을 읽을 수 없어 공개 이미지 변환 서비스(wsrv.nl)를 거쳐 색만 읽음
 async function extractSpine(cover){
   if(!cover.includes('kakaocdn.net')){ try{ const p=await loadPixels(cover); if(p) return p; }catch(e){} }
-  if(cover.startsWith('data:')) return null;
+  if(cover.startsWith('data:')||cover.startsWith('https://drive.google.com/')) return null; // 내 사진 링크는 외부 서비스로 보내지 않음
   return loadPixels('https://wsrv.nl/?w=48&h=72&fit=fill&output=png&url='+encodeURIComponent(cover));
 }
 let spineBusy=false; const spineFailed=new Set();
@@ -614,10 +797,12 @@ function spineHtml(b,z=0){
 }
 /* ---------- 책장 보기: 평점별로 표지를 가로 진열 ---------- */
 let shelfRating='all';
+// 4.5점은 4점 칸으로 묶는다. 0.5점은 가장 낮은 1점 칸에 넣는다
+const shelfGroup=b=>b.rating?Math.max(1,Math.floor(b.rating)):0;
 function renderShelf(list){
-  const counts=[5,4,3,2,1,0].map(r=>({r,n:list.filter(b=>(b.rating||0)===r).length})).filter(x=>x.n);
+  const counts=[5,4,3,2,1,0].map(r=>({r,n:list.filter(b=>shelfGroup(b)===r).length})).filter(x=>x.n);
   if(shelfRating!=='all'&&!counts.some(x=>String(x.r)===shelfRating)) shelfRating='all';
-  const shown=shelfRating==='all'?[...list].sort((a,b)=>(b.rating||0)-(a.rating||0)):list.filter(b=>String(b.rating||0)===shelfRating);
+  const shown=(shelfRating==='all'?[...list]:list.filter(b=>String(shelfGroup(b))===shelfRating)).sort((a,b)=>(b.rating||0)-(a.rating||0));
   const rows=[]; for(let i=0;i<shown.length;i+=3) rows.push(shown.slice(i,i+3));
   $('#stackWrap').innerHTML=`<div class="shelfWrap">
     <div class="shelfBar">
@@ -668,9 +853,113 @@ document.addEventListener('click',e=>{
 
 /* ================== 달력 ================== */
 let calY=new Date().getFullYear(), calM=new Date().getMonth();
-$('#prevM').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal()};
-$('#nextM').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal()};
-$('#todayBtn').onclick=()=>{calY=new Date().getFullYear();calM=new Date().getMonth();renderCal()};
+$('#prevM').onclick=()=>{calM--;if(calM<0){calM=11;calY--}zoomS=1;renderCal()};
+$('#nextM').onclick=()=>{calM++;if(calM>11){calM=0;calY++}zoomS=1;renderCal()};
+$('#todayBtn').onclick=()=>{calY=new Date().getFullYear();calM=new Date().getMonth();zoomS=1;renderCal()};
+
+/* 달력 확대·이동: 두 손가락, Ctrl+휠, ＋/－ 버튼으로 확대하고 확대 중에는 끌어서 이동 */
+const ZOOM_MAX=4;
+let zoomS=1, zoomX=0, zoomY=0, calMoved=false, calPinch=null, calPan=null;
+const calBox=$('#calZoom');
+const calPick={}; // 여러 권인 날에 지금 보여 주는 책의 순번
+let calDayList=()=>[], calHold=null;
+// 여러 권인 날은 탭이 표지 전환이라 길게 눌러 그날의 목록을 연다
+const endCalHold=()=>{clearTimeout(calHold?.timer);calHold=null};
+calBox.addEventListener('pointerdown',e=>{
+  endCalHold();
+  const el=e.target.closest('.day[data-day]');
+  if(!e.isPrimary||!el||calDayList(el.dataset.day).length<2) return;
+  calHold={x:e.clientX,y:e.clientY,timer:setTimeout(()=>{
+    endCalHold(); calMoved=true; calPan=null;
+    openDay(el.dataset.day,calDayList(el.dataset.day));
+  },500)};
+});
+calBox.addEventListener('pointermove',e=>{
+  if(calHold&&Math.abs(e.clientX-calHold.x)+Math.abs(e.clientY-calHold.y)>8) endCalHold();
+});
+['pointerup','pointercancel'].forEach(t=>calBox.addEventListener(t,endCalHold));
+function applyZoom(){
+  const g=$('#calGrid'), W=calBox.clientWidth, H=g.offsetHeight;
+  zoomS=Math.min(ZOOM_MAX,Math.max(1,zoomS));
+  zoomX=Math.min(0,Math.max(W*(1-zoomS),zoomX));
+  zoomY=Math.min(0,Math.max(H*(1-zoomS),zoomY));
+  g.style.transform=zoomS>1?`translate(${zoomX}px,${zoomY}px) scale(${zoomS})`:'';
+  calBox.classList.toggle('zoomed',zoomS>1);
+  $('#calOut').disabled=zoomS<=1; $('#calIn').disabled=zoomS>=ZOOM_MAX;
+}
+// (cx,cy) 지점의 내용이 제자리에 있도록 배율을 바꾼다
+function zoomAt(s,cx,cy){
+  s=Math.min(ZOOM_MAX,Math.max(1,s));
+  zoomX=cx-(cx-zoomX)*s/zoomS; zoomY=cy-(cy-zoomY)*s/zoomS; zoomS=s;
+  applyZoom();
+}
+const zoomMid=()=>{
+  const r=calBox.getBoundingClientRect();
+  const top=Math.max(r.top,0), bottom=Math.min(r.bottom,innerHeight);
+  return [r.width/2,(top+bottom)/2-r.top];
+};
+$('#calIn').onclick=()=>zoomAt(zoomS*1.5,...zoomMid());
+$('#calOut').onclick=()=>zoomAt(zoomS/1.5,...zoomMid());
+function startCalPan(x,y){calPan={x,y,ox:zoomX,oy:zoomY}}
+function moveCalPan(x,y){
+  if(Math.abs(x-calPan.x)+Math.abs(y-calPan.y)>8) calMoved=true;
+  zoomX=calPan.ox+x-calPan.x; zoomY=calPan.oy+y-calPan.y;
+  applyZoom();
+}
+const pinchInfo=t=>{
+  const r=calBox.getBoundingClientRect();
+  return {d:Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY),
+    cx:(t[0].clientX+t[1].clientX)/2-r.left, cy:(t[0].clientY+t[1].clientY)/2-r.top};
+};
+calBox.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    e.preventDefault(); calMoved=true; calPan=null; endCalHold();
+    calPinch={...pinchInfo(e.touches),s:zoomS,x:zoomX,y:zoomY};
+  }else if(e.touches.length===1){
+    calMoved=false; calPinch=null;
+    if(zoomS>1) startCalPan(e.touches[0].clientX,e.touches[0].clientY);
+  }
+},{passive:false});
+calBox.addEventListener('touchmove',e=>{
+  if(calPinch&&e.touches.length===2){
+    e.preventDefault();
+    const p=pinchInfo(e.touches), s=Math.min(ZOOM_MAX,Math.max(1,calPinch.s*p.d/calPinch.d));
+    zoomX=p.cx-(calPinch.cx-calPinch.x)*s/calPinch.s;
+    zoomY=p.cy-(calPinch.cy-calPinch.y)*s/calPinch.s;
+    zoomS=s; applyZoom();
+  }else if(calPan&&e.touches.length===1){
+    e.preventDefault(); moveCalPan(e.touches[0].clientX,e.touches[0].clientY);
+  }
+},{passive:false});
+calBox.addEventListener('touchend',e=>{
+  calPinch=null; calPan=null;
+  if(e.touches.length===1&&zoomS>1) startCalPan(e.touches[0].clientX,e.touches[0].clientY);
+});
+calBox.addEventListener('gesturestart',e=>e.preventDefault()); // iOS 사파리의 화면 전체 확대 방지
+calBox.addEventListener('mousedown',e=>{
+  calMoved=false;
+  if(zoomS>1){e.preventDefault();startCalPan(e.clientX,e.clientY)}
+});
+addEventListener('mousemove',e=>{if(calPan&&!calPinch) moveCalPan(e.clientX,e.clientY)});
+addEventListener('mouseup',()=>{calPan=null});
+calBox.addEventListener('wheel',e=>{ // 터치패드 핀치도 ctrlKey가 켜진 휠로 들어온다
+  if(!e.ctrlKey) return;
+  e.preventDefault();
+  const r=calBox.getBoundingClientRect();
+  zoomAt(zoomS*Math.exp(-e.deltaY*.01),e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
+// 끌어서 이동한 뒤에는 날짜가 눌리지 않게 한다
+calBox.addEventListener('click',e=>{if(calMoved){e.stopPropagation();calMoved=false}},true);
+// 표지 비율을 크게 벗어나지 않는 선에서 달력이 화면 높이를 채우게 한다
+function fitCal(rows){
+  const W=calBox.clientWidth; if(!W) return;
+  const cellW=(W-8-12)/7, dow=$('#calGrid .dow').offsetHeight;
+  const top=calBox.getBoundingClientRect().top+scrollY;
+  const avail=innerHeight-top-dow-$('nav').offsetHeight-28;
+  const rowH=(avail-rows*2)/rows;
+  $('#calGrid').style.setProperty('--calAspect',Math.min(.68,Math.max(.55,cellW/rowH)).toFixed(3));
+}
+addEventListener('resize',()=>{if(view==='cal') renderCal()});
 function renderCal(){
   $('#calTitle').textContent=`${calY}년 ${calM+1}월`;
   const first=new Date(calY,calM,1), days=new Date(calY,calM+1,0).getDate();
@@ -678,24 +967,16 @@ function renderCal(){
   const mKey=`${calY}-${pad(calM+1)}`;
   const byDay={};
   books.filter(b=>b.status==='done'&&(b.end||'').startsWith(mKey)).forEach(b=>(byDay[b.end]=byDay[b.end]||[]).push(b));
-  const readingDays=new Set();
-  books.filter(b=>b.status==='reading'&&b.start).forEach(b=>{
-    for(let d=1;d<=days;d++){const k=`${mKey}-${pad(d)}`; if(k>=b.start&&k<=today()) readingDays.add(k);}
-  });
-  let html=['월','화','수','목','금','토','일'].map((d,i)=>`<div class="dow ${i===5?'sat':i===6?'sun':''}">${d}</div>`).join('');
+  let html=['월','화','수','목','금','토','일'].map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<lead;i++) html+=`<div class="day out"></div>`;
   for(let d=1;d<=days;d++){
-    const k=`${mKey}-${pad(d)}`, wd=(lead+d-1)%7, list=byDay[k]||[];
-    let inner=`<span class="n">${d}</span>`;
-    if(list.length){
-      const b=list[0];
-      inner+=b.cover?`<div class="cvfill" style="background-image:url('${esc(b.cover)}')"></div>`
-                    :`<div class="cvfill txt" style="background:${colorOf(b)}">${esc(b.title.slice(0,14))}</div>`;
-      if(list.length>1) inner+=`<span class="more">+${list.length-1}</span>`;
-    } else if(readingDays.has(k)) inner+=`<div class="readbar"></div>`;
-    html+=`<div class="day ${wd===5?'sat':wd===6?'sun':''} ${k===today()?'today':''}" data-day="${k}">${inner}</div>`;
+    const k=`${mKey}-${pad(d)}`, list=byDay[k]||[];
+    const inner=list.length?dayBook(k,list):`<span class="n">${d}</span>`;
+    html+=`<div class="day ${k===today()?'today':''}" data-day="${k}" aria-label="${calM+1}월 ${d}일">${inner}</div>`;
   }
   $('#calGrid').innerHTML=html;
+  fitCal(Math.ceil((lead+days)/7));
+  applyZoom();
   const mBooks=Object.values(byDay).flat();
   const pages=mBooks.reduce((s,b)=>s+(b.pages||0),0);
   const avg=mBooks.filter(b=>b.rating).length?(mBooks.reduce((s,b)=>s+(b.rating||0),0)/mBooks.filter(b=>b.rating).length).toFixed(1):'-';
@@ -703,7 +984,20 @@ function renderCal(){
   $('#calList').innerHTML=mBooks.sort((a,b)=>a.end.localeCompare(b.end)).map(b=>`
     <div class="item" data-id="${b.id}">${cvHtml(b)}<div class="meta"><div class="t">${esc(b.title)}</div>
     <div class="a">${esc(b.author||'')}</div><div class="d">${b.end.slice(5).replace('-','/')} 완독 <span class="stars">${starStr(b.rating)}</span></div></div></div>`).join('');
-  document.querySelectorAll('.day[data-day]').forEach(el=>el.onclick=()=>openDay(el.dataset.day,byDay[el.dataset.day]||[]));
+  calDayList=day=>byDay[day]||[];
+  document.querySelectorAll('.day[data-day]').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.day, list=byDay[k]||[];
+    if(list.length<2) return openDay(k,list);
+    calPick[k]=((calPick[k]||0)+1)%list.length; // 여러 권인 날은 탭할 때마다 다음 표지로
+    el.innerHTML=dayBook(k,list);
+  });
+}
+// 완독한 책이 있는 날은 날짜 대신 책만 보여 준다
+function dayBook(k,list){
+  const b=list[(calPick[k]||0)%list.length];
+  const face=b.cover?`<div class="cvfill" style="background-image:url('${esc(b.cover)}')"></div>`
+                    :`<div class="cvfill txt">${esc(b.title.slice(0,14))}</div>`;
+  return face+(list.length>1?`<span class="more">+${list.length-1}</span>`:'');
 }
 function openDay(day,list){
   const [y,m,d]=day.split('-');
@@ -854,7 +1148,7 @@ function openEdit(src={}){
       <div class="field"><label>시작일</label><input id="eStart" type="date" value="${b.start}"></div>
       <div class="field" id="endField"><label>완독일</label><input id="eEnd" type="date" value="${b.end}"></div>
     </div>
-    <div class="field"><label>별점</label><div class="starPick" id="eStars">${[1,2,3,4,5].map(i=>`<button data-r="${i}">★</button>`).join('')}</div></div>
+    <div class="field"><label>별점</label><div class="starPick" id="eStars">${[1,2,3,4,5].map(i=>`<button data-r="${i}">★</button>`).join('')}<small id="eStarVal"></small></div></div>
     <div class="field"><label>한줄평 · 감상</label><textarea id="eReview" placeholder="이 책은 나에게…">${esc(b.review)}</textarea></div>
     <div class="field"><label>인상 깊은 문장</label>
       <div class="quoteList" id="eQuotes"></div>
@@ -864,14 +1158,24 @@ function openEdit(src={}){
   m=>{
     const $m=s=>m.querySelector(s);
     const drawCover=()=>{const c=$m('#ecv');c.style.backgroundImage=b.cover?`url('${b.cover}')`:'';c.textContent=b.cover?'':'표지 없음'};
-    const drawStars=()=>m.querySelectorAll('#eStars button').forEach(x=>x.classList.toggle('on',+x.dataset.r<=b.rating));
+    const drawStars=()=>{
+      m.querySelectorAll('#eStars button').forEach(x=>{
+        x.classList.toggle('on',+x.dataset.r<=b.rating);
+        x.classList.toggle('half',+x.dataset.r-.5===b.rating);
+      });
+      m.querySelector('#eStarVal').textContent=b.rating?`${b.rating}점`:'';
+    };
     const drawQuotes=()=>{$m('#eQuotes').innerHTML=b.quotes.map((q,i)=>`<div class="q"><p>“${esc(q.text)}” ${q.page?`<small>p.${esc(q.page)}</small>`:''}</p><button data-qd="${i}">✕</button></div>`).join('');
       m.querySelectorAll('[data-qd]').forEach(x=>x.onclick=()=>{b.quotes.splice(+x.dataset.qd,1);drawQuotes()})};
     const drawStatus=()=>{m.querySelectorAll('#eStatus button').forEach(x=>x.classList.toggle('on',x.dataset.s===b.status));
       $m('#endField label').textContent=b.status==='stopped'?'중단일':'완독일';
       $m('#endField').style.visibility=b.status==='reading'?'hidden':'visible'};
     drawCover();drawStars();drawQuotes();drawStatus();
-    m.querySelectorAll('#eStars button').forEach(x=>x.onclick=()=>{b.rating=b.rating===+x.dataset.r?0:+x.dataset.r;drawStars()});
+    // 별의 왼쪽 절반을 누르면 0.5점, 오른쪽을 누르면 1점. 같은 값을 다시 누르면 지운다
+    m.querySelectorAll('#eStars button').forEach(x=>x.onclick=e=>{
+      const box=x.getBoundingClientRect(), v=+x.dataset.r-(e.clientX<box.left+box.width/2?.5:0);
+      b.rating=b.rating===v?0:v; drawStars();
+    });
     m.querySelectorAll('#eStatus button').forEach(x=>x.onclick=()=>{b.status=x.dataset.s;if(b.status!=='reading'&&!$m('#eEnd').value)$m('#eEnd').value=today();if(b.status==='reading'&&!$m('#eStart').value)$m('#eStart').value=today();drawStatus()});
     $m('#qAdd').onclick=()=>{const t=$m('#qText').value.trim();if(!t)return;b.quotes.push({text:t,page:$m('#qPage').value.trim()});$m('#qText').value='';$m('#qPage').value='';drawQuotes()};
     $m('#eCoverUrl').onchange=e=>{b.cover=e.target.value.trim();drawCover()};
@@ -939,7 +1243,7 @@ function openDetail(id){
     m.querySelector('#dEdit').onclick=()=>openEdit(b);
     const dd=m.querySelector('#dDone'); if(dd) dd.onclick=()=>openEdit({...b,status:'done',end:today()});
     m.querySelector('#dShare').onclick=async()=>{
-      const txt=`📚 ${b.title}${b.author?' / '+b.author:''}\n${starStr(b.rating)}\n${b.review||''}${(b.quotes||[])[0]?`\n\n“${b.quotes[0].text}”`:''}`;
+      const txt=`📚 ${b.title}${b.author?' / '+b.author:''}\n${starTxt(b.rating)}\n${b.review||''}${(b.quotes||[])[0]?`\n\n“${b.quotes[0].text}”`:''}`;
       if(navigator.share) navigator.share({text:txt}).catch(()=>{}); else {await navigator.clipboard.writeText(txt);toast('클립보드에 복사했어요')}
     };
     m.querySelector('#dDel').onclick=()=>{if(confirm(`「${b.title}」 기록을 삭제할까요?`)){books=books.filter(x=>x.id!==b.id);save();closeModal();render();toast('삭제했어요')}};
@@ -1010,7 +1314,168 @@ $('#sampleBtn').onclick=async e=>{
   save(); e.target.textContent='예시 책 10권 넣어보기'; toast('예시를 넣었어요'); go('stack');
 };
 
+/* ================== 구글 시트 동기화 ================== */
+const SYNC_URL_RE=/^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
+const SYNC_BATCH=20;
+let syncBusy=false, syncAgain=false, syncTimer=null, syncError='', syncRejected={}, syncTried=0, syncWarned=false;
+const syncOn=()=>!!(cfg.syncUrl&&cfg.syncSecret);
+function scheduleSync(){
+  if(!syncOn()) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncNow,2000);
+}
+function nextBatch(){
+  const del=Object.entries(syncSt.deleted).map(([id,updatedAt])=>({id,updatedAt,deleted:true}));
+  const ups=[];
+  for(const b of books){
+    if(ups.length>=SYNC_BATCH) break;
+    if(!syncSt.dirty.includes(b.id)||syncRejected[b.id]) continue;
+    const {spine,...rest}=b;
+    ups.push(rest);
+  }
+  return [...del,...ups];
+}
+async function syncPost(changes){
+  const ctl=new AbortController(), timer=setTimeout(()=>ctl.abort(),180000);
+  let j;
+  try{
+    // text/plain이면 사전 요청(preflight) 없이 Apps Script로 보낼 수 있다
+    const r=await fetch(cfg.syncUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({secret:cfg.syncSecret,changes}),signal:ctl.signal});
+    j=await r.json();
+  }catch(e){
+    throw new Error('연결하지 못했어요. 인터넷, 주소, 배포의 "모든 사용자" 설정을 확인해 주세요.');
+  }finally{clearTimeout(timer)}
+  if(j.ok) return j;
+  if(j.error==='secret') throw new Error('비밀 문구가 스크립트와 달라요.');
+  if(j.error==='busy') throw new Error('다른 기기가 동기화 중이에요. 잠시 뒤 다시 시도합니다.');
+  throw new Error('시트 저장 오류: '+j.error);
+}
+function mergeRemote(res,sent){
+  let changed=false;
+  const fix=()=>{changed=true};
+  const undirty=id=>{syncSt.dirty=syncSt.dirty.filter(x=>x!==id)};
+  // 보내는 동안 다시 고친 책은 다음 차례에 또 올린다
+  sent.forEach(s=>{
+    if(s.deleted){ if(syncSt.deleted[s.id]===s.updatedAt) delete syncSt.deleted[s.id]; return; }
+    const local=books.find(b=>b.id===s.id);
+    if(!local||local.updatedAt===s.updatedAt) undirty(s.id);
+  });
+  (res.rejected||[]).forEach(r=>{syncRejected[r.id]=r.error; undirty(r.id)});
+  const rows=(res.rows||[]).filter(r=>/^[\w-]+$/.test(r.id||''));
+  rows.forEach(raw=>{
+    const i=books.findIndex(b=>b.id===raw.id), local=books[i], pending=syncSt.dirty.includes(raw.id);
+    if(raw.deleted){
+      if(local&&(!pending||toTime(raw.updatedAt)>=toTime(local.updatedAt))){
+        books.splice(i,1); snap.delete(raw.id); undirty(raw.id); fix();
+      }
+      return;
+    }
+    if(toTime(syncSt.deleted[raw.id])>=toTime(raw.updatedAt)&&syncSt.deleted[raw.id]) return;
+    const r=Object.assign({title:'',author:'',publisher:'',cover:'',isbn:'',pages:0,status:'done',start:'',end:'',rating:0,review:'',quotes:[]},raw);
+    if(!local){
+      books.push(r); snap.set(r.id,bookKey(r)); delete syncSt.deleted[r.id]; fix();
+    }else if((!pending||toTime(r.updatedAt)>toTime(local.updatedAt))&&bookKey(r)!==bookKey(local)){
+      // 사진이 드라이브 주소로 바뀐 경우 이미 계산한 책등 색을 그대로 쓴다
+      if(local.spine) r.spine=local.spine.src===local.cover?{...local.spine,src:r.cover}:local.spine;
+      books[i]=r; snap.set(r.id,bookKey(r)); undirty(r.id); fix();
+    }else if(!pending) local.updatedAt=r.updatedAt;
+  });
+  // 시트에 없는 책은 시트를 새로 만들었거나 줄이 지워진 경우라 다시 올린다
+  const remote=new Set(rows.map(r=>r.id));
+  books.forEach(b=>{if(!remote.has(b.id)&&!syncRejected[b.id]&&!syncSt.dirty.includes(b.id)) syncSt.dirty.push(b.id)});
+  return changed;
+}
+async function syncNow(){
+  if(!syncOn()) return false;
+  if(syncBusy){syncAgain=true;return false}
+  clearTimeout(syncTimer);
+  syncBusy=true; syncAgain=false; syncTried=Date.now(); drawSyncStatus();
+  let changed=false, ok=false;
+  try{
+    if(syncSt.url!==cfg.syncUrl){ // 처음 연결했거나 다른 시트로 바꾸면 전부 올린다
+      syncSt.url=cfg.syncUrl; syncSt.lastSync=''; syncRejected={};
+      syncSt.dirty=books.map(b=>b.id);
+    }
+    for(let n=0;n<500;n++){
+      const batch=nextBatch();
+      const res=await syncPost(batch);
+      if(mergeRemote(res,batch)) changed=true;
+      saveSync();
+      if(!nextBatch().length) break;
+    }
+    syncSt.lastSync=new Date().toISOString(); syncError=''; ok=true;
+  }catch(e){
+    syncError=e.message;
+    if(!syncWarned){syncWarned=true;toast('동기화 실패: 설정에서 확인해 주세요')}
+  }
+  syncBusy=false;
+  saveSync();
+  if(changed){
+    localStorage.setItem(LS_BOOKS,JSON.stringify(books));
+    if(view!=='set') render();
+  }
+  drawSyncStatus();
+  if(syncAgain) scheduleSync();
+  return ok;
+}
+function drawSyncStatus(){
+  const el=$('#syncStatus'); if(!el) return;
+  const rej=Object.keys(syncRejected).map(id=>books.find(b=>b.id===id)?.title).filter(Boolean);
+  const when=syncSt.lastSync?new Date(syncSt.lastSync).toLocaleString('ko-KR',{dateStyle:'short',timeStyle:'short'}):'';
+  const lines=[];
+  if(!syncOn()) lines.push('아직 연결하지 않았어요.');
+  else if(syncBusy) lines.push('동기화 중…');
+  else if(syncError) lines.push('❌ '+syncError);
+  else if(when) lines.push('✅ 마지막 동기화: '+when);
+  if(syncOn()&&syncError&&syncSt.dirty.length) lines.push(`올리지 못한 책 ${syncSt.dirty.length}권은 다음에 다시 시도합니다.`);
+  if(rej.length) lines.push(`⚠️ 내용이 너무 길어 올리지 못한 책: ${rej.join(', ')}`);
+  el.textContent=lines.join(' ');
+}
+function newSecret(){
+  return [...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function openSyncGuide(){
+  if(!cfg.syncSecret){cfg.syncSecret=$('#syncSecret').value.trim()||newSecret();saveCfg();$('#syncSecret').value=cfg.syncSecret}
+  const code=$('#gsSource').textContent.replace('__SECRET__',()=>cfg.syncSecret);
+  modal(`<div class="sheetHead"><h2>구글 시트 연결</h2><button class="iconbtn" data-close>✕</button></div>
+    <p class="hint"><b>이 기기가 처음이고 시트가 이미 있다면</b> 이 과정 없이, 웹 앱 주소와 비밀 문구만 설정에 넣으면 됩니다.</p>
+    <p class="hint"><b>1.</b> 아래 스크립트를 복사합니다. 비밀 문구가 들어 있으니 다른 사람에게 보내지 마세요.</p>
+    <textarea id="gsCode" readonly style="height:90px;font-size:11px">${esc(code)}</textarea>
+    <button class="btn" id="gsCopy" style="margin-top:8px">스크립트 복사</button>
+    <p class="hint"><b>2.</b> <a href="https://sheets.new" target="_blank" rel="noopener">새 구글 시트</a>를 만들고 <b>확장 프로그램 → Apps Script</b>를 엽니다. 기존 내용을 지우고 붙여 넣은 뒤 저장합니다.</p>
+    <p class="hint"><b>3.</b> <b>배포 → 새 배포 → 웹 앱</b>을 고르고 실행 사용자는 <b>나</b>, 액세스 권한은 <b>모든 사용자</b>로 배포합니다. 권한을 묻는 화면에서 내 계정을 고르고 승인합니다. "확인되지 않은 앱" 경고가 나오면 <b>고급 → 이동</b>을 누릅니다.</p>
+    <p class="hint"><b>4.</b> 받은 <b>웹 앱 URL</b>을 설정의 주소 칸에 넣고 <b>저장하고 동기화</b>를 누릅니다.</p>`,
+  m=>{
+    m.querySelector('#gsCopy').onclick=async()=>{
+      const ta=m.querySelector('#gsCode');
+      try{await navigator.clipboard.writeText(ta.value)}catch(_){ta.select();document.execCommand('copy')}
+      toast('복사했어요');
+    };
+  });
+}
+$('#syncGuide').onclick=openSyncGuide;
+$('#syncSave').onclick=async()=>{
+  const url=$('#syncUrl').value.trim(), secret=$('#syncSecret').value.trim();
+  if(!SYNC_URL_RE.test(url)) return toast('주소는 script.google.com/…/exec 형식이어야 해요');
+  if(!secret) return toast('비밀 문구를 입력해 주세요');
+  cfg.syncUrl=url;cfg.syncSecret=secret;saveCfg();syncError='';
+  const ok=await syncNow();
+  toast(ok?'동기화했어요':'동기화하지 못했어요');
+};
+$('#syncOff').onclick=()=>{
+  if(!confirm('이 기기의 연결을 끊을까요? 기기와 시트의 기록은 지워지지 않습니다.')) return;
+  clearTimeout(syncTimer);
+  cfg.syncUrl='';cfg.syncSecret='';saveCfg();
+  syncSt.url='';syncSt.lastSync='';saveSync();syncError='';
+  $('#syncUrl').value='';$('#syncSecret').value='';drawSyncStatus();
+};
+addEventListener('online',()=>{syncNow()});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&Date.now()-syncTried>30000) syncNow();
+});
+
 render();
+syncNow();
 </script>
 </body>
 </html>
