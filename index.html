@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4ecdf">
+<title>책탑 - 독서 기록</title>
+<style>
+:root{
+  --bg:#f4ecdf;--card:#fbf6ec;--card2:#efe5d3;--line:#ded0b8;
+  --text:#3d2f22;--sub:#85745f;--accent:#bd5a34;--accent2:#b5702a;--good:#4f7f45;
+  color-scheme:light;
+  --radius:14px;--oak:#d6a873;--paper:#f7eedd;--ink:#3d2f22;--fab:#6f6b3c;
+  --serif:"AppleMyungjo","Noto Serif KR","Noto Serif CJK KR","Batang","Nanum Myeongjo",serif;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .33 0 0 0 0 .2 0 0 0 .22 -.07'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --wood:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .3' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .24 0 0 0 0 .1 0 0 0 1 -.34'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#e9dfcf}
+html,body{margin:0;color:var(--text);font-family:-apple-system,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
+body{background:var(--bg) var(--grain);max-width:520px;margin:0 auto;box-shadow:0 0 30px rgba(90,60,30,.12);min-height:100vh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--text);background:#fffaf0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent2)}
+textarea{resize:vertical;min-height:70px}
+.hidden{display:none!important}
+
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:22px;margin:0;flex:1;display:flex;align-items:center;gap:6px}
+header select{width:auto;padding:6px 10px;font-weight:700;font-size:16px;background:var(--card)}
+.iconbtn{width:40px;height:40px;border-radius:12px;background:var(--card);display:grid;place-items:center;font-size:19px}
+
+.seg{display:flex;background:var(--card);border-radius:12px;padding:4px;margin:0 16px 12px}
+.seg button{flex:1;padding:9px;border-radius:9px;color:var(--sub);font-weight:600}
+.seg button.on{background:var(--accent);color:#fff}
+
+/* ----- 쌓아보기 ----- */
+#stackWrap{padding:10px 16px 30px;display:flex;flex-direction:column;align-items:center}
+.topper{display:flex;flex-direction:column;align-items:center;margin-bottom:6px}
+.bubble{border-radius:16px;padding:10px 18px;text-align:center;position:relative;margin-bottom:12px;background:var(--paper);color:var(--ink);box-shadow:0 4px 14px rgba(90,60,30,.16)}
+.bubble b{font-size:17px}
+.bubble small{display:block;color:#6e5c46;margin-top:2px}
+.bubble:after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:var(--paper);transform:translateX(-50%) rotate(45deg)}
+.mascot{font-size:58px;line-height:1;animation:bob 2.4s ease-in-out infinite;filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+@keyframes bob{50%{transform:translateY(-5px)}}
+/* 종이·원목 톤 */
+header h1,header h1 select,.sheetHead h2,.sec h3,.calHead b,.bubble b,.detailTop h2,.item .t{font-family:var(--serif)}
+header{background:rgba(244,236,223,.93);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sec,.item,.calSum,.res{border:1px solid rgba(120,90,50,.1);box-shadow:0 2px 8px rgba(90,60,30,.08)}
+.iconbtn{background:transparent;color:var(--text)}
+.iconbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+header select{background:#eadfca;border-color:#d9c9ae}
+.seg{border-radius:99px;background:var(--card);box-shadow:0 3px 10px rgba(90,60,30,.14)}
+.seg button{border-radius:99px}
+/* 쌓아보기 책등: 표지 조각 위에 배경 없는 글자를 얹음 */
+.spine{position:relative;flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);color:var(--fg);cursor:pointer;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 12px;margin-top:1px;border-radius:2px}
+.spine .sp-img{position:absolute;background-repeat:no-repeat;background-size:auto 100%;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg)}
+.spine:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(40,25,10,.38),inset 0 2px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(40,25,10,.3)}
+.spine .sp-text{position:relative;z-index:3;display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;text-shadow:0 0 3px var(--ts),0 0 2px var(--ts),0 1px 1px var(--ts)}
+.spine .sp-t{font-weight:800;font-size:var(--tsize,14px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.01em}
+.spine .sp-a{font-weight:600;font-size:calc(var(--tsize,14px)*.78);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:100;min-width:0}
+.spine .ribbon{position:absolute;z-index:4;left:0;top:0;width:7px;height:100%;background:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+/* 책장 보기: 평점별 칸에 표지를 가로로 진열 */
+.shelfWrap{width:100%}
+.shelfBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.shelfBar select{width:auto;min-width:150px;font-weight:700;font-size:16px;color:var(--accent2);background:var(--card)}
+.shelfBar small{color:var(--sub)}
+.coverShelf{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end;padding:12px 10px 13px;margin-bottom:14px;border-radius:2px;background:linear-gradient(180deg,#e2d4bc,#efe5d3 70%);box-shadow:inset 0 8px 12px rgba(90,60,30,.22),0 10px 10px -5px rgba(90,60,30,.35)}
+.coverShelf:after{content:"";position:absolute;left:-2px;right:-2px;bottom:0;height:13px;border-radius:1px;background:var(--oak) var(--wood);box-shadow:inset 0 2px 0 rgba(255,240,215,.5)}
+.coverBook{z-index:1;position:relative;min-width:0;cursor:pointer;line-height:0;transition:transform .15s}
+.coverBook:active{transform:translateY(-3px)}
+.coverBook img{display:block;width:100%;height:auto;border-radius:2px 3px 3px 2px;box-shadow:2px 3px 7px rgba(60,40,20,.4);background:var(--card2)}
+.coverBook .noCover{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:.68;padding:8px;border-radius:2px 3px 3px 2px;font-size:13px;font-weight:700;line-height:1.35;text-align:center;color:#2a2224;box-shadow:2px 3px 7px rgba(60,40,20,.4);overflow:hidden}
+.coverBook .ribbon{position:absolute;top:0;right:8px;width:12px;height:30px;background:var(--accent);clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%)}
+/* 글자 설정 */
+.colorPick{display:flex;gap:6px;align-items:center}
+.colorPick button{flex:1;padding:9px 0;border-radius:10px;background:var(--card2);color:var(--sub);font-size:13px}
+.colorPick button.on{background:var(--accent);color:#fff}
+.colorPick input[type=color]{flex:none;width:44px;height:38px;padding:3px;border-radius:10px;cursor:pointer}
+.sizeRow{display:flex;align-items:center;gap:12px}
+.sizeRow input[type=range]{flex:1;padding:0;accent-color:var(--accent);border:0;background:none}
+.sizeRow b{min-width:38px;text-align:right}
+.previewBox{padding:14px 4px;display:flex;flex-direction:column;align-items:center}
+.ground{flex:none;width:calc(100% + 16px);height:14px;border-radius:2px;background:var(--wood),#d6a873;box-shadow:inset 0 0 0 1px rgba(90,55,25,.4),inset 0 2px 0 rgba(255,245,225,.5),inset 0 -2px 0 rgba(90,55,25,.3)}
+.empty{text-align:center;color:var(--sub);padding:60px 20px;line-height:1.7}
+.empty .big{font-size:52px}
+
+/* ----- 리스트 ----- */
+.list{padding:0 16px}
+.item{display:flex;gap:12px;padding:10px;background:var(--card);border-radius:var(--radius);margin-bottom:10px;align-items:center}
+.item .cv{width:52px;height:74px;border-radius:5px;flex-shrink:0}
+.item .meta{flex:1;min-width:0}
+.item .t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .a{color:var(--sub);font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .d{color:var(--sub);font-size:12px;margin-top:5px}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:var(--card2);color:var(--sub);margin-right:4px}
+.badge.reading{background:#e3ebd3;color:var(--good)}
+.badge.stopped{background:#f4dcd4;color:#a8432d}
+.stars{color:var(--accent2);letter-spacing:1px}
+.filterRow{display:flex;gap:8px;padding:0 16px 10px}
+.filterRow input{flex:1}
+.filterRow select{width:auto}
+
+/* 표지 */
+.cv{background:var(--card2) center/cover no-repeat;display:grid;place-items:center;color:var(--sub);font-size:11px;text-align:center;overflow:hidden}
+
+/* ----- 달력 ----- */
+.calHead{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 10px}
+.calHead b{font-size:20px}
+.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 10px}
+.dow{text-align:center;font-size:12px;color:var(--sub);padding:6px 0}
+.dow.sun,.day.sun .n{color:#c0492f}.dow.sat,.day.sat .n{color:#3a6ea5}
+.day{aspect-ratio:.68;border-radius:6px;position:relative;background:var(--card);overflow:hidden}
+.day.out{background:transparent}
+.day .n{position:absolute;top:3px;left:5px;font-size:12px;z-index:2;text-shadow:0 0 3px #fff,0 0 2px #fff}
+.day.today{outline:2px solid var(--accent)}
+.day .cvfill{position:absolute;inset:0;background:center/cover no-repeat}
+.day .cvfill.txt{display:flex;align-items:center;justify-content:center;font-size:10px;padding:14px 3px 3px;text-align:center;color:#2a2224;font-weight:700;line-height:1.2}
+.day .more{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;border-radius:99px;padding:1px 6px;z-index:2}
+.day .readbar{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--good);opacity:.7}
+.calSum{margin:14px 16px;padding:12px 14px;background:var(--card);border-radius:var(--radius);display:flex;justify-content:space-around;text-align:center}
+.calSum b{display:block;font-size:20px;color:var(--accent2)}
+.calSum small{color:var(--sub)}
+
+/* ----- 통계 ----- */
+.sec{margin:0 16px 14px;background:var(--card);border-radius:var(--radius);padding:16px}
+.sec h3{margin:0 0 12px;font-size:15px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--card2);border-radius:10px;padding:10px;text-align:center}
+.kpi b{display:block;font-size:19px}
+.kpi small{color:var(--sub);font-size:11px}
+.goalBar{height:14px;background:var(--card2);border-radius:99px;overflow:hidden;margin:8px 0 6px}
+.goalBar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .6s}
+.bars{display:flex;align-items:flex-end;gap:5px;height:130px;padding-top:16px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:10px;color:var(--sub)}
+.bars i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.bars i em{position:absolute;top:-15px;left:0;right:0;text-align:center;font-style:normal;color:var(--text)}
+.rank{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rank:last-child{border:0}
+.quoteCard{background:var(--card2);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;line-height:1.6}
+.quoteCard small{display:block;color:var(--sub);margin-top:8px}
+
+/* ----- 탭바 ----- */
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:var(--card);border-radius:18px 18px 0 0;box-shadow:0 -4px 14px rgba(90,60,30,.12);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:10}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--sub);padding:4px}
+nav button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav button i{font-style:normal}
+nav button.on{color:var(--accent)}
+nav button.on{font-weight:700}
+nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;display:grid;place-items:center;color:#fbf6ec;font-size:26px;margin-top:-26px;border:4px solid var(--card);box-shadow:0 4px 10px rgba(60,40,20,.3)}
+
+/* ----- 모달 ----- */
+.modal{position:fixed;inset:0;background:rgba(50,35,20,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+@keyframes fade{from{opacity:0}}
+.sheet{background:var(--bg);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(40px)}}
+.sheetHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheetHead h2{margin:0;font-size:18px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--sub);margin-bottom:5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;text-align:center}
+.btn.ghost{background:var(--card2);color:var(--text)}
+.btn.danger{background:transparent;color:#a8432d;border:1px solid #dcb5a6}
+.btns{display:flex;gap:8px;margin-top:8px}.btns .btn{flex:1}
+.searchRow{display:flex;gap:8px}
+.searchRow .btn{width:auto;padding:0 16px;flex-shrink:0}
+.results{margin-top:12px}
+.res{display:flex;gap:12px;padding:8px;border-radius:10px;align-items:center;background:var(--card);margin-bottom:8px}
+.res .cv{width:46px;height:66px;border-radius:4px;flex-shrink:0}
+.res .meta{flex:1;min-width:0;font-size:13px}
+.res .meta b{display:block;font-size:14px;margin-bottom:3px}
+.res .meta span{color:var(--sub)}
+.hint{color:var(--sub);font-size:12px;line-height:1.6;margin:8px 0}
+.coverEdit{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.coverEdit .cv{width:96px;height:138px;border-radius:6px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.coverEdit .side{flex:1;display:flex;flex-direction:column;gap:6px}
+.coverEdit .side .btn{padding:9px;font-size:13px}
+.statusPick{display:flex;gap:6px}
+.statusPick button{flex:1;padding:9px;border-radius:10px;background:var(--card2);color:var(--sub);font-size:13px}
+.statusPick button.on{background:var(--accent);color:#fff}
+.starPick{display:flex;gap:4px;font-size:30px}
+.starPick button{color:#d8cab2;padding:0 2px;line-height:1}
+.starPick button.on{color:var(--accent2)}
+.quoteList .q{background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.55;display:flex;gap:8px}
+.quoteList .q p{margin:0;flex:1}
+.quoteList .q small{color:var(--sub)}
+.detailTop{display:flex;gap:16px;margin-bottom:16px}
+.detailTop .cv{width:110px;height:158px;border-radius:6px;flex-shrink:0;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.detailTop h2{margin:0 0 6px;font-size:19px;line-height:1.35}
+.detailTop p{margin:3px 0;color:var(--sub);font-size:13px}
+.review{background:var(--card);border-radius:12px;padding:12px 14px;line-height:1.65;white-space:pre-wrap;font-size:14px;margin-bottom:14px}
+.label{font-size:13px;color:var(--sub);margin:16px 0 8px;font-weight:600}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#000c;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;z-index:50;animation:fade .2s}
+.dayList .item{cursor:pointer}
+#scanVideo{width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--sub);border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle}
+@keyframes rot{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ===== 쌓아보기 / 리스트 ===== -->
+<section id="v-stack">
+  <header>
+    <h1>📚 <select id="yearSel"></select></h1>
+    <button class="iconbtn" id="textStyleBtn" title="글자 색·크기" style="font-family:var(--serif);font-weight:600;font-size:20px">Aa</button>
+    <button class="iconbtn" id="searchToggle" title="검색"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button>
+  </header>
+  <div class="seg" id="stackSeg">
+    <button data-m="stack" class="on">쌓아보기</button>
+    <button data-m="shelf">책장 보기</button>
+    <button data-m="list">리스트형</button>
+  </div>
+  <div class="filterRow hidden" id="filterRow">
+    <input id="q" placeholder="제목·저자·메모 검색">
+    <select id="statusFilter">
+      <option value="all">전체</option><option value="done">완독</option>
+      <option value="reading">읽는 중</option><option value="stopped">중단</option>
+    </select>
+  </div>
+  <div id="stackWrap"></div>
+  <div id="listWrap" class="list hidden"></div>
+</section>
+
+<!-- ===== 달력 ===== -->
+<section id="v-cal" class="hidden">
+  <header>
+    <h1>🗓️ 독서 달력</h1>
+    <button class="iconbtn" id="todayBtn" title="오늘">📍</button>
+  </header>
+  <div class="calHead">
+    <button class="iconbtn" id="prevM">‹</button>
+    <b id="calTitle"></b>
+    <button class="iconbtn" id="nextM">›</button>
+  </div>
+  <div class="calGrid" id="calGrid"></div>
+  <div class="calSum" id="calSum"></div>
+  <div class="list" id="calList"></div>
+</section>
+
+<!-- ===== 통계 ===== -->
+<section id="v-stats" class="hidden">
+  <header><h1>📊 <select id="statYear"></select></h1></header>
+  <div id="statsBody"></div>
+</section>
+
+<!-- ===== 설정 ===== -->
+<section id="v-set" class="hidden">
+  <header><h1>⚙️ 설정</h1></header>
+  <div class="sec">
+    <h3>연간 독서 목표</h3>
+    <div class="searchRow"><input id="goalIn" type="number" min="1" placeholder="예: 50"><button class="btn" id="goalSave">저장</button></div>
+  </div>
+  <div class="sec">
+    <h3>책 정보 연결</h3>
+    <p class="hint"><b>카카오</b> → 제목·저자·출판사·표지<br><b>국립중앙도서관</b> → 쪽수·판형·분류<br>두 곳의 정보를 ISBN으로 맞춰 합칩니다. 두께는 쪽수로 추정해요.</p>
+    <div class="field"><label>카카오 REST API 키</label><input id="kakaoKey" placeholder="예: 1a2b3c..."></div>
+    <div class="field"><label>국립중앙도서관 인증키</label><input id="nlKey" placeholder="ISBN 서지정보 cert_key"></div>
+    <div class="field"><label>Google Books API 키 (선택)</label><input id="googleKey" placeholder="없어도 됨"></div>
+    <div class="btns"><button class="btn" id="keySave">저장</button><button class="btn ghost" id="keyTest">연결 테스트</button></div>
+    <pre id="testOut" class="hint hidden" style="white-space:pre-wrap;background:var(--card2);padding:10px;border-radius:8px;font-size:11px"></pre>
+  </div>
+  <div class="sec">
+    <h3>백업</h3>
+    <p class="hint">기록은 이 기기 브라우저에만 저장됩니다. 주기적으로 백업 파일을 내려받아 두세요.</p>
+    <div class="btns">
+      <button class="btn ghost" id="exportBtn">⬇️ 내보내기</button>
+      <button class="btn ghost" id="importBtn">⬆️ 가져오기</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+  </div>
+  <div class="sec">
+    <h3>표지·두께 일괄 보완</h3>
+    <p class="hint">표지·쪽수·두께가 비어 있는 책들을 자동으로 다시 찾아 채웁니다.</p>
+    <button class="btn ghost" id="refetchAll">🖼️ 표지·두께 일괄 보완</button>
+  </div>
+  <div class="sec">
+    <h3>샘플 데이터</h3>
+    <button class="btn ghost" id="sampleBtn">예시 책 10권 넣어보기</button>
+  </div>
+</section>
+
+<nav>
+  <button data-v="stack" class="on"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5"/></svg>홈</button>
+  <button data-v="cal"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>달력</button>
+  <button class="add" id="addBtn"><i>＋</i>기록</button>
+  <button data-v="stats"><svg viewBox="0 0 24 24"><path d="M4 20.5h16M6.5 20.5V13h3v7.5M10.5 20.5V8h3v12.5M14.5 20.5V4h3v16.5"/></svg>통계</button>
+  <button data-v="set"><svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>설정</button>
+</nav>
+
+<div id="modalRoot"></div>
+<input type="file" id="coverFile" accept="image/*" class="hidden">
+
+<script>
+/* ================== 저장소 ================== */
+const LS_BOOKS='bookstack.books', LS_CFG='bookstack.cfg';
+let books = JSON.parse(localStorage.getItem(LS_BOOKS)||'[]');
+let cfg = Object.assign({goal:30,kakaoKey:'',googleKey:'',nlKey:'',spineColor:'auto',spineSize:14}, JSON.parse(localStorage.getItem(LS_CFG)||'{}'));
+books.forEach(b=>{if(/^\d$/.test(b.category||'')) b.category=['총류','철학','종교','사회과학','자연과학','기술과학','예술','언어','문학','역사'][+b.category]}); // 초기 버전의 숫자 분류 정리
+const save=()=>localStorage.setItem(LS_BOOKS,JSON.stringify(books));
+const saveCfg=()=>localStorage.setItem(LS_CFG,JSON.stringify(cfg));
+
+/* ================== 유틸 ================== */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>ymd(new Date());
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const hash=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
+const PALETTE=['#f7a8a0','#f9c9c4','#f4b183','#f7d58b','#bfe3a4','#a8d8d0','#a9c8f0','#c6b6f0','#f0b6d8','#e8e1d4','#f29e93','#ffd1a9'];
+const colorOf=b=>PALETTE[hash(b.id+b.title)%PALETTE.length];
+const starStr=r=>r?'★'.repeat(r)+'☆'.repeat(5-r):'';
+const statusName={done:'완독',reading:'읽는 중',stopped:'중단'};
+const bookDate=b=>b.end||b.start||b.createdAt?.slice(0,10)||'';
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
+function coverStyle(url){return url?`style="background-image:url('${esc(url)}')"`:''}
+function cvHtml(b,cls='cv'){return `<div class="${cls}" ${coverStyle(b.cover)}>${b.cover?'':esc((b.title||'').slice(0,12))}</div>`}
+
+/* ================== 책 검색 (표지 자동) ================== */
+const https=u=>u?u.replace(/^http:/,'https:'):'';
+async function searchKakao(q){
+  const r=await fetch('https://dapi.kakao.com/v3/search/book?size=20&query='+encodeURIComponent(q),{headers:{Authorization:'KakaoAK '+cfg.kakaoKey}});
+  if(!r.ok) throw new Error('kakao '+r.status);
+  const j=await r.json();
+  return j.documents.map(d=>({
+    title:d.title, author:(d.authors||[]).join(', '), publisher:d.publisher,
+    cover:https(d.thumbnail).replace('R120x174.q85','R300x0.q85'), isbn:(d.isbn||'').split(' ').pop(),
+    pages:0, pub:(d.datetime||'').slice(0,10), desc:d.contents
+  }));
+}
+async function searchGoogle(q){
+  const r=await fetch('https://www.googleapis.com/books/v1/volumes?maxResults=20&printType=books&q='+encodeURIComponent(q)+(cfg.googleKey?'&key='+encodeURIComponent(cfg.googleKey):''));
+  if(!r.ok) throw new Error('google '+r.status);
+  const j=await r.json();
+  return (j.items||[]).map(it=>{
+    const v=it.volumeInfo||{};
+    const ids=v.industryIdentifiers||[];
+    const isbn=(ids.find(i=>i.type==='ISBN_13')||ids.find(i=>i.type==='ISBN_10')||{}).identifier||'';
+    let cover=https(v.imageLinks?.thumbnail||v.imageLinks?.smallThumbnail||'').replace('&edge=curl','');
+    if(!cover&&isbn) cover=`https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`;
+    return {title:v.title+(v.subtitle?' - '+v.subtitle:''),author:(v.authors||[]).join(', '),publisher:v.publisher||'',
+      cover,isbn,pages:v.pageCount||0,pub:v.publishedDate||'',desc:v.description||''};
+  });
+}
+async function searchOpenLib(q){
+  const r=await fetch('https://openlibrary.org/search.json?limit=15&q='+encodeURIComponent(q));
+  const j=await r.json();
+  return (j.docs||[]).map(d=>({title:d.title,author:(d.author_name||[]).join(', '),publisher:(d.publisher||[])[0]||'',
+    cover:d.cover_i?`https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`:'',isbn:(d.isbn||[])[0]||'',
+    pages:d.number_of_pages_median||0,pub:String(d.first_publish_year||''),desc:''}));
+}
+// 국립중앙도서관 ISBN 서지정보 (브라우저 직접 호출 가능)
+async function nlQuery(params){
+  const u=new URLSearchParams({cert_key:cfg.nlKey,result_style:'json',page_no:'1',...params});
+  const r=await fetch('https://www.nl.go.kr/seoji/SearchApi.do?'+u,{signal:AbortSignal.timeout(8000)});
+  if(!r.ok) throw new Error('국립중앙도서관 '+r.status);
+  const j=await r.json();
+  if(j.RESULT==='ERROR') throw new Error(`${j.ERR_CODE} ${j.ERR_MESSAGE||''}`.trim());
+  return j.docs||[];
+}
+// "xii, 248 p." → 248, "248쪽" → 248 (가장 큰 숫자가 본문 쪽수)
+function parsePages(v){
+  const n=String(v??'').match(/\d+/g);
+  if(!n) return 0;
+  const m=Math.max(...n.map(Number));
+  return m>0&&m<20000?m:0;
+}
+// "21 cm" → 세로 210mm, "148*210mm" → 가로 148·세로 210
+function parseSize(v){
+  const t=String(v??'').toLowerCase(), n=(t.match(/\d+(\.\d+)?/g)||[]).map(Number);
+  if(!n.length) return {};
+  const unit=/cm|센티/.test(t)||(!/mm|밀리/.test(t)&&Math.max(...n)<60)?10:1;
+  const mm=n.map(x=>Math.round(x*unit));
+  return mm.length>=2?{widthMm:Math.min(mm[0],mm[1]),heightMm:Math.max(mm[0],mm[1])}:{heightMm:mm[0]};
+}
+// SUBJECT는 한국십진분류(KDC) 첫 자리 숫자로 옴
+const KDC_NAMES=['총류','철학','종교','사회과학','자연과학','기술과학','예술','언어','문학','역사'];
+const nlCategory=d=>{const c=String(d.SUBJECT||d.KDC||'').trim()[0];return /\d/.test(c||'')?KDC_NAMES[+c]:''};
+function nlToBook(d){
+  return {title:d.TITLE||'',author:d.AUTHOR||'',publisher:d.PUBLISHER||'',cover:https(d.TITLE_URL||''),
+    isbn:d.EA_ISBN||'',pages:parsePages(d.PAGE),...parseSize(d.BOOK_SIZE),category:nlCategory(d),
+    pub:d.PUBLISH_PREDATE||'',desc:''};
+}
+async function searchNl(q){
+  const isbn=q.replace(/[-\s]/g,'');
+  const docs=await nlQuery(/^\d{10}(\d{3})?$/.test(isbn)?{page_size:'20',isbn}:{page_size:'20',title:q});
+  return docs.map(nlToBook).filter(b=>b.title);
+}
+async function searchBooks(q){
+  let res=[];
+  if(cfg.kakaoKey){ try{res=await searchKakao(q)}catch(e){console.warn(e)} }
+  if(!res.length&&cfg.nlKey){ try{res=await searchNl(q)}catch(e){console.warn(e)} }
+  if(!res.length){ try{res=await searchGoogle(q)}catch(e){console.warn(e)} }
+  if(!res.length){ try{res=await searchOpenLib(q)}catch(e){console.warn(e)} }
+  return res;
+}
+// 정보 보완: 카카오에 없는 쪽수·판형·분류를 국립중앙도서관(ISBN)에서 골라 채움. 이미 있는 값은 덮어쓰지 않음.
+async function enrich(b){
+  if(!b.isbn) return b;
+  if(cfg.nlKey){
+    try{
+      const fill=n=>['pages','widthMm','heightMm','category','cover','title','author','publisher'].forEach(k=>{if(!b[k]&&n[k]) b[k]=n[k]});
+      const d=(await nlQuery({page_size:'1',isbn:b.isbn.replace(/[^0-9Xx]/g,'')}))[0];
+      if(d) fill(nlToBook(d));
+    }catch(e){console.warn(e)}
+  }
+  if(!b.pages){try{const r=await searchGoogle('isbn:'+b.isbn); if(r[0]?.pages) b.pages=r[0].pages;}catch(e){}}
+  return b;
+}
+async function findCover(b){
+  const q=b.isbn?b.isbn:`${b.title} ${b.author||''}`.trim();
+  const r=await searchBooks(q);
+  const hit=r.find(x=>x.cover);
+  if(hit&&!b.isbn&&hit.isbn) b.isbn=hit.isbn;   // ISBN을 알아두면 쪽수·판형 보완 가능
+  return hit?hit.cover:'';
+}
+
+/* ================== 화면 전환 ================== */
+let view='stack', stackMode='stack';
+document.querySelectorAll('nav button[data-v]').forEach(b=>b.onclick=()=>go(b.dataset.v));
+function go(v){
+  view=v;
+  document.querySelectorAll('nav button[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  ['stack','cal','stats','set'].forEach(k=>$('#v-'+k).classList.toggle('hidden',k!==v));
+  render(); scrollTo(0,0);
+}
+function render(){
+  if(view==='stack') renderStack();
+  if(view==='cal') renderCal();
+  if(view==='stats') renderStats();
+  if(view==='set'){ $('#goalIn').value=cfg.goal; $('#kakaoKey').value=cfg.kakaoKey; $('#googleKey').value=cfg.googleKey; $('#nlKey').value=cfg.nlKey; }
+}
+
+/* ================== 책탑 ================== */
+const yearsOf=()=>{const s=new Set(books.map(b=>bookDate(b).slice(0,4)).filter(Boolean));s.add(String(new Date().getFullYear()));return [...s].sort().reverse()};
+let selYear=String(new Date().getFullYear());
+function fillYearSel(sel,val,withAll){
+  const ys=yearsOf();
+  sel.innerHTML=(withAll?'<option value="all">전체</option>':'')+ys.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  sel.value=val;
+}
+$('#yearSel').onchange=e=>{selYear=e.target.value;renderStack()};
+document.querySelectorAll('#stackSeg button').forEach(b=>b.onclick=()=>{
+  stackMode=b.dataset.m;
+  document.querySelectorAll('#stackSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  renderStack();
+});
+$('#searchToggle').onclick=()=>{$('#filterRow').classList.toggle('hidden'); if(!$('#filterRow').classList.contains('hidden'))$('#q').focus(); else{$('#q').value='';renderStack()}};
+$('#q').oninput=renderStack; $('#statusFilter').onchange=renderStack;
+
+const COMPARE=[ // 비교 대상 (cm)
+  {e:'🐜',n:'개미',cm:0},{e:'🪙',n:'동전 높이',cm:2},{e:'✏️',n:'연필',cm:17},{e:'📱',n:'스마트폰',cm:15},
+  {e:'🐈',n:'고양이',cm:30},{e:'🐶',n:'강아지',cm:50},{e:'🧒',n:'어린이',cm:110},{e:'🧍',n:'어른',cm:170},
+  {e:'🧊',n:'냉장고',cm:185},{e:'🚪',n:'문',cm:210},{e:'🐘',n:'코끼리',cm:320},{e:'🦒',n:'기린',cm:550},
+  {e:'🏠',n:'2층집',cm:800},{e:'🌳',n:'큰 나무',cm:1500},{e:'🏢',n:'10층 건물',cm:3000},{e:'🗽',n:'자유의 여신상',cm:9300},
+  {e:'🗼',n:'에펠탑',cm:33000},{e:'🏔️',n:'한라산',cm:195000}
+].sort((a,b)=>a.cm-b.cm);
+const thickCm=b=>(b.pages||280)*0.005+0.3;
+
+function filtered(){
+  const q=($('#q').value||'').trim().toLowerCase(), st=$('#statusFilter').value;
+  return books.filter(b=>{
+    if(selYear!=='all'&&bookDate(b).slice(0,4)!==selYear) return false;
+    if(st!=='all'&&b.status!==st) return false;
+    if(q){const hay=[b.title,b.author,b.publisher,b.review,...(b.quotes||[]).map(x=>x.text)].join(' ').toLowerCase(); if(!hay.includes(q)) return false;}
+    return true;
+  }).sort((a,b)=>bookDate(b).localeCompare(bookDate(a))||(b.createdAt||'').localeCompare(a.createdAt||''));
+}
+function renderStack(){
+  fillYearSel($('#yearSel'),selYear,true);
+  const list=filtered();
+  $('#textStyleBtn').classList.toggle('hidden',stackMode!=='stack');
+  $('#stackWrap').classList.toggle('hidden',stackMode==='list');
+  $('#listWrap').classList.toggle('hidden',stackMode!=='list');
+  if(!list.length){
+    const html=`<div class="empty"><div class="big">📖</div>아직 기록한 책이 없어요.<br>아래 <b>＋ 기록</b>을 눌러 첫 책을 쌓아보세요!</div>`;
+    $('#stackWrap').innerHTML=html; $('#listWrap').innerHTML=html; return;
+  }
+  if(stackMode==='list'){
+    $('#listWrap').innerHTML=list.map(b=>`
+      <div class="item" data-id="${b.id}">
+        ${cvHtml(b)}
+        <div class="meta">
+          <div class="t">${esc(b.title)}</div>
+          <div class="a">${esc(b.author||'')}${b.publisher?' · '+esc(b.publisher):''}</div>
+          <div class="d"><span class="badge ${b.status}">${statusName[b.status]}</span>${esc(bookDate(b))} <span class="stars">${starStr(b.rating)}</span></div>
+        </div>
+      </div>`).join('');
+    return;
+  }
+  if(stackMode==='shelf'){ renderShelf(list); queueSpineColors(); return; }
+  // 쌓기: 완독/중단 책만 쌓고, 읽는 중은 맨 위에 별도로 표시
+  const stack=list.filter(b=>b.status!=='reading'), reading=list.filter(b=>b.status==='reading');
+  const total=stack.reduce((s,b)=>s+thickCm(b),0);
+  let cmp=COMPARE[0]; for(const c of COMPARE) if(total>=c.cm) cmp=c;
+  const next=COMPARE.find(c=>c.cm>total);
+  let html=`<div class="topper">
+    <div class="bubble"><b>${total.toFixed(1)}cm · ${stack.length}권</b>
+      <small>${cmp.e} ${cmp.n}보다 높아요!${next?` · ${next.e} ${next.n}까지 ${(next.cm-total).toFixed(0)}cm`:''}</small></div>
+    <div class="mascot">${cmp.e}</div></div>`;
+  html+=[...reading,...stack].map(b=>spineHtml(b)).join('');
+  html+=`<div class="ground"></div>`;
+  $('#stackWrap').innerHTML=html;
+  queueSpineColors();
+}
+/* ---------- 책등: 표지에서 뽑은 색으로 디자인 ---------- */
+const hex2rgb=h=>{const n=parseInt(h.slice(1),16);return [n>>16&255,n>>8&255,n&255]};
+const rgb2hex=c=>'#'+c.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const lum=c=>{const f=c.map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*f[0]+.7152*f[1]+.0722*f[2]};
+const textOn=c=>lum(c)>.36?'#1b1a18':'#fbf8f2';
+const shade=(c,a)=>c.map(v=>a<0?v*(1+a):v+(255-v)*a);
+const colorDist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+const satOf=c=>{const M=Math.max(...c),m=Math.min(...c);return M?(M-m)/M:0};
+
+// 픽셀에서 바탕색(가장 넓은 색, 책등과 맞닿는 왼쪽 가장자리에 가중치)과 포인트색(바탕과 다르고 선명한 색)을 고름
+function paletteFromPixels(d,w,h){
+  const buckets=new Map();
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4; if(d[i+3]<128) continue;
+    const key=(d[i]>>4)<<8|(d[i+1]>>4)<<4|d[i+2]>>4;
+    const weight=x<w*.15?4:(x>w*.9||y<h*.06||y>h*.94)?2:1;
+    const k=buckets.get(key)||{r:0,g:0,b:0,n:0,w:0};
+    k.r+=d[i];k.g+=d[i+1];k.b+=d[i+2];k.n++;k.w+=weight;buckets.set(key,k);
+  }
+  const list=[...buckets.values()].map(k=>({c:[k.r/k.n,k.g/k.n,k.b/k.n],w:k.w})).sort((a,b)=>b.w-a.w);
+  if(!list.length) return null;
+  const bg=list[0].c;
+  let best=null,score=0;
+  for(const k of list){
+    const dist=colorDist(k.c,bg); if(dist<70) continue;
+    const sc=k.w*(1+satOf(k.c)*3)*Math.min(dist,200);
+    if(sc>score){score=sc;best=k.c}
+  }
+  const ac=best||shade(bg,lum(bg)>.36?-.35:.35);
+  return {bg:rgb2hex(bg),ac:rgb2hex(ac),fg:textOn(bg),acfg:textOn(ac),...pickStrip(d,w,h,bg)};
+}
+// 책등에 쓸 표지 조각: 바탕색만 있는 빈 부분을 피해 그림이 가장 많은 세로 띠를 고름
+function pickStrip(d,w,h,bg){
+  const col=new Array(w).fill(0);
+  for(let x=0;x<w;x++)for(let y=0;y<h;y++){
+    const i=(y*w+x)*4;
+    if(colorDist([d[i],d[i+1],d[i+2]],bg)>50) col[x]++;
+  }
+  const win=Math.max(3,Math.round(w*.16)), from=Math.round(w*.05), to=w-win-Math.round(w*.05);
+  let bestAt=from,bestSum=-1;
+  for(let x=from;x<=to;x++){
+    let sum=0; for(let k=0;k<win;k++) sum+=col[x+k];
+    if(sum>bestSum){bestSum=sum;bestAt=x}
+  }
+  let r=0,g=0,bl=0,n=0;
+  for(let x=bestAt;x<bestAt+win;x++)for(let y=0;y<h;y++){const i=(y*w+x)*4;r+=d[i];g+=d[i+1];bl+=d[i+2];n++}
+  return {stripX:Math.round(bestAt/(w-win)*100),stripFg:lum([r/n,g/n,bl/n])>.36?'#141414':'#ffffff'};
+}
+function loadPixels(src){
+  return new Promise((res,rej)=>{
+    const i=new Image();
+    if(!src.startsWith('data:')) i.crossOrigin='anonymous';
+    i.onload=()=>{try{
+      const W=48,H=72,c=document.createElement('canvas');c.width=W;c.height=H;
+      const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(i,0,0,W,H);
+      res(paletteFromPixels(x.getImageData(0,0,W,H).data,W,H));
+    }catch(e){rej(e)}};
+    i.onerror=()=>rej(new Error('image'));
+    i.src=src;
+  });
+}
+// 카카오 표지는 브라우저에서 픽셀을 읽을 수 없어 공개 이미지 변환 서비스(wsrv.nl)를 거쳐 색만 읽음
+async function extractSpine(cover){
+  if(!cover.includes('kakaocdn.net')){ try{ const p=await loadPixels(cover); if(p) return p; }catch(e){} }
+  if(cover.startsWith('data:')) return null;
+  return loadPixels('https://wsrv.nl/?w=48&h=72&fit=fill&output=png&url='+encodeURIComponent(cover));
+}
+let spineBusy=false; const spineFailed=new Set();
+async function queueSpineColors(){
+  if(spineBusy) return;
+  spineBusy=true;
+  let changed=false;
+  for(const b of books){
+    if(!b.cover||(b.spine?.src===b.cover&&b.spine.stripFg)||spineFailed.has(b.cover)) continue;
+    try{
+      const p=await extractSpine(b.cover);
+      if(p){b.spine={...p,src:b.cover};changed=true;save();}
+      else spineFailed.add(b.cover);
+    }catch(e){spineFailed.add(b.cover)}
+  }
+  spineBusy=false;
+  if(changed&&view==='stack') renderStack();
+}
+function spineVars(b){
+  const p=b.spine&&b.spine.src===b.cover?b.spine:null;
+  const base=p?hex2rgb(p.bg):(b.cover?[34,36,42]:hex2rgb(colorOf(b)));
+  const color=cfg.spineColor!=='auto'?cfg.spineColor:(p?.stripFg||textOn(base));
+  const shadow=lum(hex2rgb(color))>.36?'rgba(0,0,0,.85)':'rgba(255,255,255,.85)';
+  return `--bg:${rgb2hex(base)};--fg:${color};--ts:${shadow};--tsize:${cfg.spineSize}px;`;
+}
+const shortAuthor=a=>String(a||'').split(',')[0].trim();
+const stripPos=b=>(b.spine?.src===b.cover&&b.spine.stripX!==undefined)?b.spine.stripX:12;
+function spineImg(b,style){
+  return b.cover?`<i class="sp-img" style="background-image:url('${esc(b.cover)}');background-position:${stripPos(b)}% 0;${style}"></i>`:'';
+}
+function spineInner(b,room){
+  const author=shortAuthor(b.author), size=cfg.spineSize;
+  const showAuthor=author&&room-b.title.length*size*1.04>=author.length*size*.8+12;
+  return `<span class="sp-text"><span class="sp-t">${esc(b.title)}</span>${showAuthor?`<span class="sp-a">${esc(author)}</span>`:''}</span>${b.status==='reading'?'<i class="ribbon"></i>':''}`;
+}
+function spineHtml(b){
+  const h=Math.round(Math.max(30,Math.min(76,20+(b.pages||280)/11)));
+  // 너비: 실제 세로 길이(판형)가 있으면 반영, 없으면 임의
+  const w=b.heightMm?Math.max(62,Math.min(92,70+(b.heightMm-180)*0.33)):70+hash(b.id)%20;
+  const px=Math.round((Math.min(innerWidth,520)-32)*w/100);
+  return `<div class="spine" data-id="${b.id}" style="${spineVars(b)}height:${h}px;width:${w}%">${spineImg(b,`width:${h}px;height:${px}px;`)}${spineInner(b,px-30)}</div>`;
+}
+/* ---------- 책장 보기: 평점별로 표지를 가로 진열 ---------- */
+let shelfRating='all';
+function renderShelf(list){
+  const counts=[5,4,3,2,1,0].map(r=>({r,n:list.filter(b=>(b.rating||0)===r).length})).filter(x=>x.n);
+  if(shelfRating!=='all'&&!counts.some(x=>String(x.r)===shelfRating)) shelfRating='all';
+  const shown=shelfRating==='all'?[...list].sort((a,b)=>(b.rating||0)-(a.rating||0)):list.filter(b=>String(b.rating||0)===shelfRating);
+  const rows=[]; for(let i=0;i<shown.length;i+=3) rows.push(shown.slice(i,i+3));
+  $('#stackWrap').innerHTML=`<div class="shelfWrap">
+    <div class="shelfBar">
+      <select id="shelfRating" aria-label="별점 선택">
+        <option value="all">전체 별점</option>
+        ${counts.map(({r,n})=>`<option value="${r}">${r?'★'.repeat(r)+'☆'.repeat(5-r):'평점 없음'} (${n})</option>`).join('')}
+      </select>
+      <small>${shown.length}권</small>
+    </div>
+    ${rows.map(r=>`<div class="coverShelf">${r.map(b=>`<div class="coverBook" data-id="${b.id}" title="${esc(b.title)}">${b.cover
+      ?`<img src="${esc(b.cover)}" alt="${esc(b.title)}" loading="lazy">`
+      :`<div class="noCover" style="background:${colorOf(b)}">${esc(b.title)}</div>`}${b.status==='reading'?'<i class="ribbon"></i>':''}</div>`).join('')}</div>`).join('')}
+  </div>`;
+  const sel=$('#shelfRating'); sel.value=shelfRating;
+  sel.onchange=e=>{shelfRating=e.target.value;renderStack();scrollTo(0,0)};
+}
+let stackResize; addEventListener('resize',()=>{clearTimeout(stackResize);stackResize=setTimeout(()=>{if(view==='stack'&&stackMode==='stack')renderStack()},200)});
+/* ---------- 쌓아보기 글자 색·크기 설정 ---------- */
+$('#textStyleBtn').onclick=()=>{
+  const sample=filtered().find(b=>b.status!=='reading')||filtered()[0]||{id:'sample',title:'책 제목',author:'저자',pages:300,status:'done'};
+  const presets={auto:'자동','#ffffff':'흰색','#141414':'검정'};
+  modal(`<div class="sheetHead"><h2>책등 글자</h2><button class="iconbtn" data-close>✕</button></div>
+    <div class="previewBox" id="tsPreview"></div>
+    <div class="field"><label>글자 색</label><div class="colorPick" id="tsColors">
+      ${Object.entries(presets).map(([k,v])=>`<button data-c="${k}">${v}</button>`).join('')}
+      <input type="color" id="tsCustom" aria-label="직접 고르기">
+    </div></div>
+    <div class="field"><label>글자 크기</label><div class="sizeRow"><input type="range" id="tsSize" min="10" max="22" step="1"><b id="tsSizeVal"></b></div></div>
+    <p class="hint">자동은 표지 조각의 밝기에 맞춰 흰색이나 검정을 고릅니다. 글자 둘레에 옅은 그림자가 들어가요.</p>`,
+  m=>{
+    const q=x=>m.querySelector(x);
+    const draw=()=>{
+      q('#tsPreview').innerHTML=spineHtml(sample);
+      q('#tsSize').value=cfg.spineSize; q('#tsSizeVal').textContent=cfg.spineSize+'px';
+      m.querySelectorAll('#tsColors button').forEach(x=>x.classList.toggle('on',x.dataset.c===cfg.spineColor));
+      if(cfg.spineColor!=='auto') q('#tsCustom').value=cfg.spineColor;
+    };
+    const apply=()=>{saveCfg();draw();renderStack()};
+    m.querySelectorAll('#tsColors button').forEach(x=>x.onclick=()=>{cfg.spineColor=x.dataset.c;apply()});
+    q('#tsCustom').oninput=e=>{cfg.spineColor=e.target.value;apply()};
+    q('#tsSize').oninput=e=>{cfg.spineSize=+e.target.value;apply()};
+    draw();
+  });
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-id]'); if(el&&!e.target.closest('.modal')) openDetail(el.dataset.id);
+});
+
+/* ================== 달력 ================== */
+let calY=new Date().getFullYear(), calM=new Date().getMonth();
+$('#prevM').onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal()};
+$('#nextM').onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal()};
+$('#todayBtn').onclick=()=>{calY=new Date().getFullYear();calM=new Date().getMonth();renderCal()};
+function renderCal(){
+  $('#calTitle').textContent=`${calY}년 ${calM+1}월`;
+  const first=new Date(calY,calM,1), days=new Date(calY,calM+1,0).getDate();
+  const lead=(first.getDay()+6)%7; // 월요일 시작
+  const mKey=`${calY}-${pad(calM+1)}`;
+  const byDay={};
+  books.filter(b=>b.status==='done'&&(b.end||'').startsWith(mKey)).forEach(b=>(byDay[b.end]=byDay[b.end]||[]).push(b));
+  const readingDays=new Set();
+  books.filter(b=>b.status==='reading'&&b.start).forEach(b=>{
+    for(let d=1;d<=days;d++){const k=`${mKey}-${pad(d)}`; if(k>=b.start&&k<=today()) readingDays.add(k);}
+  });
+  let html=['월','화','수','목','금','토','일'].map((d,i)=>`<div class="dow ${i===5?'sat':i===6?'sun':''}">${d}</div>`).join('');
+  for(let i=0;i<lead;i++) html+=`<div class="day out"></div>`;
+  for(let d=1;d<=days;d++){
+    const k=`${mKey}-${pad(d)}`, wd=(lead+d-1)%7, list=byDay[k]||[];
+    let inner=`<span class="n">${d}</span>`;
+    if(list.length){
+      const b=list[0];
+      inner+=b.cover?`<div class="cvfill" style="background-image:url('${esc(b.cover)}')"></div>`
+                    :`<div class="cvfill txt" style="background:${colorOf(b)}">${esc(b.title.slice(0,14))}</div>`;
+      if(list.length>1) inner+=`<span class="more">+${list.length-1}</span>`;
+    } else if(readingDays.has(k)) inner+=`<div class="readbar"></div>`;
+    html+=`<div class="day ${wd===5?'sat':wd===6?'sun':''} ${k===today()?'today':''}" data-day="${k}">${inner}</div>`;
+  }
+  $('#calGrid').innerHTML=html;
+  const mBooks=Object.values(byDay).flat();
+  const pages=mBooks.reduce((s,b)=>s+(b.pages||0),0);
+  const avg=mBooks.filter(b=>b.rating).length?(mBooks.reduce((s,b)=>s+(b.rating||0),0)/mBooks.filter(b=>b.rating).length).toFixed(1):'-';
+  $('#calSum').innerHTML=`<div><b>${mBooks.length}</b><small>완독</small></div><div><b>${pages.toLocaleString()}</b><small>페이지</small></div><div><b>${avg}</b><small>평균 별점</small></div>`;
+  $('#calList').innerHTML=mBooks.sort((a,b)=>a.end.localeCompare(b.end)).map(b=>`
+    <div class="item" data-id="${b.id}">${cvHtml(b)}<div class="meta"><div class="t">${esc(b.title)}</div>
+    <div class="a">${esc(b.author||'')}</div><div class="d">${b.end.slice(5).replace('-','/')} 완독 <span class="stars">${starStr(b.rating)}</span></div></div></div>`).join('');
+  document.querySelectorAll('.day[data-day]').forEach(el=>el.onclick=()=>openDay(el.dataset.day,byDay[el.dataset.day]||[]));
+}
+function openDay(day,list){
+  const [y,m,d]=day.split('-');
+  modal(`<div class="sheetHead"><h2>${+m}월 ${+d}일</h2><button class="iconbtn" data-close>✕</button></div>
+    <div class="dayList">${list.length?list.map(b=>`<div class="item" data-open="${b.id}">${cvHtml(b)}<div class="meta"><div class="t">${esc(b.title)}</div><div class="a">${esc(b.author||'')}</div><div class="d stars">${starStr(b.rating)}</div></div></div>`).join(''):'<p class="hint">이 날 완독한 책이 없어요.</p>'}</div>
+    <button class="btn" id="addOnDay">＋ 이 날짜로 책 추가</button>`,
+  root=>{
+    root.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>{closeModal();openDetail(el.dataset.open)});
+    root.querySelector('#addOnDay').onclick=()=>{closeModal();openSearch({end:day})};
+  });
+}
+
+/* ================== 통계 ================== */
+let statY=String(new Date().getFullYear());
+$('#statYear').onchange=e=>{statY=e.target.value;renderStats()};
+function renderStats(){
+  fillYearSel($('#statYear'),statY,false);
+  const yb=books.filter(b=>b.status==='done'&&(b.end||'').startsWith(statY));
+  const pages=yb.reduce((s,b)=>s+(b.pages||0),0);
+  const rated=yb.filter(b=>b.rating);
+  const avg=rated.length?(rated.reduce((s,b)=>s+b.rating,0)/rated.length).toFixed(1):'-';
+  const pct=Math.min(100,Math.round(yb.length/Math.max(1,cfg.goal)*100));
+  const isNow=statY===String(new Date().getFullYear());
+  let paceTxt='';
+  if(isNow){
+    const doy=(Date.now()-new Date(+statY,0,1))/864e5, expect=cfg.goal*doy/365;
+    const diff=yb.length-expect;
+    paceTxt=diff>=0?`예상 페이스보다 <b style="color:var(--good)">${diff.toFixed(1)}권 앞서</b> 있어요 👏`:`목표 페이스보다 <b style="color:var(--accent2)">${(-diff).toFixed(1)}권</b> 뒤처졌어요. 화이팅!`;
+  }
+  const months=Array.from({length:12},(_,i)=>yb.filter(b=>+b.end.slice(5,7)===i+1).length);
+  const mx=Math.max(1,...months);
+  const authors={}; yb.forEach(b=>(b.author||'').split(',').map(a=>a.trim()).filter(Boolean).forEach(a=>authors[a]=(authors[a]||0)+1));
+  const topA=Object.entries(authors).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const best=[...rated].sort((a,b)=>b.rating-a.rating||(b.pages||0)-(a.pages||0)).slice(0,3);
+  const allQ=books.flatMap(b=>(b.quotes||[]).map(q=>({...q,book:b})));
+  const rq=allQ.length?allQ[Math.floor(Math.random()*allQ.length)]:null;
+  const durs=yb.filter(b=>b.start&&b.end).map(b=>(new Date(b.end)-new Date(b.start))/864e5+1).filter(x=>x>0);
+  const avgDur=durs.length?(durs.reduce((a,b)=>a+b,0)/durs.length).toFixed(1):'-';
+
+  $('#statsBody').innerHTML=`
+    <div class="sec"><h3>🎯 ${statY}년 목표</h3>
+      <div style="display:flex;justify-content:space-between"><b style="font-size:22px">${yb.length} <small style="color:var(--sub);font-size:14px">/ ${cfg.goal}권</small></b><b style="color:var(--accent2)">${pct}%</b></div>
+      <div class="goalBar"><i style="width:${pct}%"></i></div>
+      <div class="hint" style="margin:0">${paceTxt}</div></div>
+    <div class="sec"><div class="kpis">
+      <div class="kpi"><b>${pages.toLocaleString()}</b><small>읽은 페이지</small></div>
+      <div class="kpi"><b>${avg}</b><small>평균 별점</small></div>
+      <div class="kpi"><b>${avgDur}</b><small>평균 독서일</small></div>
+    </div></div>
+    <div class="sec"><h3>📅 월별 완독</h3>
+      <div class="bars">${months.map((c,i)=>`<div><i style="height:${c/mx*100}%">${c?`<em>${c}</em>`:''}</i>${i+1}</div>`).join('')}</div></div>
+    ${best.length?`<div class="sec"><h3>🏆 올해의 책</h3>${best.map((b,i)=>`<div class="item" data-id="${b.id}" style="background:var(--card2)">${cvHtml(b)}<div class="meta"><div class="t">${['🥇','🥈','🥉'][i]} ${esc(b.title)}</div><div class="a">${esc(b.author||'')}</div><div class="d stars">${starStr(b.rating)}</div></div></div>`).join('')}</div>`:''}
+    ${topA.length?`<div class="sec"><h3>✍️ 많이 읽은 작가</h3>${topA.map(([a,c])=>`<div class="rank"><span>${esc(a)}</span><b>${c}권</b></div>`).join('')}</div>`:''}
+    ${rq?`<div class="sec"><h3>💬 다시 보는 문장</h3><div class="quoteCard">“${esc(rq.text)}”<small>— ${esc(rq.book.title)}${rq.page?' p.'+esc(rq.page):''}</small></div>
+      <button class="btn ghost" style="margin-top:10px" onclick="renderStats()">🔄 다른 문장</button></div>`:''}
+  `;
+}
+
+/* ================== 모달 공통 ================== */
+function modal(html,init){
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="modal"><div class="sheet">${html}</div></div>`;
+  const m=root.firstChild;
+  m.onclick=e=>{if(e.target===m)closeModal()};
+  m.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
+  init&&init(m);
+}
+function closeModal(){stopScan();$('#modalRoot').innerHTML=''}
+
+/* ================== 책 검색/추가 ================== */
+$('#addBtn').onclick=()=>openSearch();
+function openSearch(preset={}){
+  modal(`<div class="sheetHead"><h2>책 추가</h2><button class="iconbtn" data-close>✕</button></div>
+    <div class="searchRow"><input id="sq" placeholder="책 제목, 저자 또는 ISBN" enterkeyhint="search"><button class="btn" id="sgo">검색</button></div>
+    <div class="btns">
+      ${'BarcodeDetector' in window?'<button class="btn ghost" id="scanBtn">📷 바코드로 찾기</button>':''}
+      <button class="btn ghost" id="manualBtn">✏️ 직접 입력</button>
+    </div>
+    <div id="scanArea" class="hidden" style="margin-top:10px"><video id="scanVideo" playsinline muted></video><p class="hint">책 뒷면 ISBN 바코드를 비춰주세요.</p></div>
+    <div class="results" id="results"><p class="hint">검색하면 표지 이미지와 정보가 자동으로 채워져요.</p>${cfg.kakaoKey?'':'<p class="hint" style="color:var(--accent2)">💡 설정 → 카카오 API 키를 넣으면 국내 책 검색이 훨씬 정확해져요.</p>'}</div>`,
+  m=>{
+    const go=async()=>{
+      const q=m.querySelector('#sq').value.trim(); if(!q) return;
+      const box=m.querySelector('#results'); box.innerHTML='<p class="hint"><span class="spin"></span> 검색 중…</p>';
+      const res=await searchBooks(q);
+      if(!res.length){box.innerHTML='<p class="hint">검색 결과가 없어요. 다른 검색어나 직접 입력을 이용해 주세요.'+(cfg.kakaoKey?'':'<br>(키 없는 무료 검색 한도가 찼을 수 있어요 → 설정에서 카카오 키 등록)')+'</p>';return}
+      box.innerHTML=res.map((r,i)=>`<div class="res" data-i="${i}">${cvHtml(r)}<div class="meta"><b>${esc(r.title)}</b><span>${esc(r.author)}${r.publisher?' · '+esc(r.publisher):''}${r.pub?' · '+esc(r.pub.slice(0,4)):''}</span></div></div>`).join('');
+      box.querySelectorAll('.res').forEach(el=>el.onclick=async()=>{
+        const r=res[+el.dataset.i]; el.style.opacity=.5;
+        await enrich(r);
+        openEdit({...r,...preset});
+      });
+    };
+    m.querySelector('#sgo').onclick=go;
+    m.querySelector('#sq').onkeydown=e=>{if(e.key==='Enter')go()};
+    m.querySelector('#manualBtn').onclick=()=>openEdit({...preset});
+    const sb=m.querySelector('#scanBtn');
+    if(sb) sb.onclick=()=>startScan(m,isbn=>{m.querySelector('#sq').value=isbn;go()});
+    setTimeout(()=>m.querySelector('#sq').focus(),100);
+  });
+}
+
+/* 바코드 스캔 (Android Chrome 등 BarcodeDetector 지원 브라우저) */
+let scanStream=null, scanTimer=null;
+async function startScan(m,onFound){
+  try{
+    const area=m.querySelector('#scanArea'), v=m.querySelector('#scanVideo');
+    area.classList.remove('hidden');
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    v.srcObject=scanStream; await v.play();
+    const det=new BarcodeDetector({formats:['ean_13']});
+    scanTimer=setInterval(async()=>{
+      const codes=await det.detect(v).catch(()=>[]);
+      const c=codes.find(x=>/^97[89]/.test(x.rawValue));
+      if(c){stopScan();area.classList.add('hidden');onFound(c.rawValue)}
+    },400);
+  }catch(e){toast('카메라를 열 수 없어요');}
+}
+function stopScan(){clearInterval(scanTimer);scanStream&&scanStream.getTracks().forEach(t=>t.stop());scanStream=null}
+
+/* ================== 기록 편집 ================== */
+function openEdit(src={}){
+  const isNew=!src.id;
+  const b=Object.assign({id:uid(),title:'',author:'',publisher:'',cover:'',isbn:'',pages:0,status:'done',start:'',end:today(),rating:0,review:'',quotes:[],createdAt:new Date().toISOString()},src);
+  if(isNew&&src.end===undefined) b.end=today();
+  b.quotes=[...(b.quotes||[])];
+  modal(`<div class="sheetHead"><h2>${isNew?'기록하기':'기록 수정'}</h2><button class="iconbtn" data-close>✕</button></div>
+    <div class="coverEdit">
+      <div class="cv" id="ecv"></div>
+      <div class="side">
+        <button class="btn ghost" id="autoCover">🔎 표지 자동 찾기</button>
+        <button class="btn ghost" id="upCover">🖼️ 사진으로 등록</button>
+        <input id="eCoverUrl" placeholder="또는 이미지 주소">
+      </div>
+    </div>
+    <div class="field"><label>제목 *</label><input id="eTitle" value="${esc(b.title)}"></div>
+    <div class="row2">
+      <div class="field"><label>저자</label><input id="eAuthor" value="${esc(b.author)}"></div>
+      <div class="field"><label>출판사</label><input id="ePub" value="${esc(b.publisher)}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>쪽수</label><input id="ePages" type="number" inputmode="numeric" value="${b.pages||''}" placeholder="두께 계산용"></div>
+      <div class="field"><label>ISBN</label><input id="eIsbn" value="${esc(b.isbn)}"></div>
+    </div>
+    <div class="field"><label>상태</label><div class="statusPick" id="eStatus">
+      ${Object.entries(statusName).map(([k,v])=>`<button data-s="${k}" class="${b.status===k?'on':''}">${v}</button>`).join('')}</div></div>
+    <div class="row2">
+      <div class="field"><label>시작일</label><input id="eStart" type="date" value="${b.start}"></div>
+      <div class="field" id="endField"><label>완독일</label><input id="eEnd" type="date" value="${b.end}"></div>
+    </div>
+    <div class="field"><label>별점</label><div class="starPick" id="eStars">${[1,2,3,4,5].map(i=>`<button data-r="${i}">★</button>`).join('')}</div></div>
+    <div class="field"><label>한줄평 · 감상</label><textarea id="eReview" placeholder="이 책은 나에게…">${esc(b.review)}</textarea></div>
+    <div class="field"><label>인상 깊은 문장</label>
+      <div class="quoteList" id="eQuotes"></div>
+      <div class="searchRow"><input id="qText" placeholder="문장"><input id="qPage" placeholder="p." style="width:64px;flex-shrink:0"><button class="btn ghost" id="qAdd">추가</button></div>
+    </div>
+    <button class="btn" id="eSave">저장</button>`,
+  m=>{
+    const $m=s=>m.querySelector(s);
+    const drawCover=()=>{const c=$m('#ecv');c.style.backgroundImage=b.cover?`url('${b.cover}')`:'';c.textContent=b.cover?'':'표지 없음'};
+    const drawStars=()=>m.querySelectorAll('#eStars button').forEach(x=>x.classList.toggle('on',+x.dataset.r<=b.rating));
+    const drawQuotes=()=>{$m('#eQuotes').innerHTML=b.quotes.map((q,i)=>`<div class="q"><p>“${esc(q.text)}” ${q.page?`<small>p.${esc(q.page)}</small>`:''}</p><button data-qd="${i}">✕</button></div>`).join('');
+      m.querySelectorAll('[data-qd]').forEach(x=>x.onclick=()=>{b.quotes.splice(+x.dataset.qd,1);drawQuotes()})};
+    const drawStatus=()=>{m.querySelectorAll('#eStatus button').forEach(x=>x.classList.toggle('on',x.dataset.s===b.status));
+      $m('#endField label').textContent=b.status==='stopped'?'중단일':'완독일';
+      $m('#endField').style.visibility=b.status==='reading'?'hidden':'visible'};
+    drawCover();drawStars();drawQuotes();drawStatus();
+    m.querySelectorAll('#eStars button').forEach(x=>x.onclick=()=>{b.rating=b.rating===+x.dataset.r?0:+x.dataset.r;drawStars()});
+    m.querySelectorAll('#eStatus button').forEach(x=>x.onclick=()=>{b.status=x.dataset.s;if(b.status!=='reading'&&!$m('#eEnd').value)$m('#eEnd').value=today();if(b.status==='reading'&&!$m('#eStart').value)$m('#eStart').value=today();drawStatus()});
+    $m('#qAdd').onclick=()=>{const t=$m('#qText').value.trim();if(!t)return;b.quotes.push({text:t,page:$m('#qPage').value.trim()});$m('#qText').value='';$m('#qPage').value='';drawQuotes()};
+    $m('#eCoverUrl').onchange=e=>{b.cover=e.target.value.trim();drawCover()};
+    $m('#autoCover').onclick=async e=>{
+      b.title=$m('#eTitle').value.trim();b.author=$m('#eAuthor').value.trim();b.isbn=$m('#eIsbn').value.trim();
+      if(!b.title&&!b.isbn) return toast('제목을 먼저 입력해 주세요');
+      e.target.innerHTML='<span class="spin"></span> 찾는 중';
+      const c=await findCover(b); e.target.textContent='🔎 표지 자동 찾기';
+      if(c){b.cover=c;drawCover();toast('표지를 찾았어요')}else toast('표지를 못 찾았어요. 사진으로 등록해 보세요');
+    };
+    $m('#upCover').onclick=()=>pickImage(url=>{b.cover=url;drawCover()});
+    $m('#eSave').onclick=async()=>{
+      b.title=$m('#eTitle').value.trim(); if(!b.title) return toast('제목을 입력해 주세요');
+      b.author=$m('#eAuthor').value.trim();b.publisher=$m('#ePub').value.trim();
+      b.pages=+$m('#ePages').value||0;b.isbn=$m('#eIsbn').value.trim();
+      b.start=$m('#eStart').value;b.end=b.status==='reading'?'':$m('#eEnd').value;
+      b.review=$m('#eReview').value.trim();
+      const pending=$m('#qText').value.trim(); if(pending) b.quotes.push({text:pending,page:$m('#qPage').value.trim()});
+      ['pub','desc'].forEach(k=>delete b[k]);
+      const i=books.findIndex(x=>x.id===b.id);
+      if(i>=0) books[i]=b; else books.push(b);
+      save(); closeModal();
+      if(isNew&&b.end){selYear=b.end.slice(0,4)}
+      toast(isNew?'책탑에 쌓였어요 📚':'수정했어요'); render();
+      // 표지가 없으면 백그라운드로 한 번 더 찾아보기
+      if(!b.cover){const c=await findCover(b).catch(()=>'');if(c){b.cover=c;save();render()}}
+      if(b.isbn&&(!b.pages||!b.heightMm)){await enrich(b);save();render()}
+    };
+  });
+}
+function pickImage(cb){
+  const inp=$('#coverFile'); inp.value='';
+  inp.onchange=()=>{
+    const f=inp.files[0]; if(!f) return;
+    const img=new Image(); img.onload=()=>{
+      const W=300, s=W/img.width, c=document.createElement('canvas');
+      c.width=W;c.height=Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      cb(c.toDataURL('image/jpeg',.8)); URL.revokeObjectURL(img.src);
+    }; img.src=URL.createObjectURL(f);
+  };
+  inp.click();
+}
+
+/* ================== 상세 ================== */
+function openDetail(id){
+  const b=books.find(x=>x.id===id); if(!b) return;
+  const days=b.start&&b.end?Math.round((new Date(b.end)-new Date(b.start))/864e5)+1:0;
+  modal(`<div class="sheetHead"><span class="badge ${b.status}">${statusName[b.status]}</span><button class="iconbtn" data-close>✕</button></div>
+    <div class="detailTop">${cvHtml(b)}
+      <div><h2>${esc(b.title)}</h2>
+        <p>${esc(b.author||'')}</p><p>${esc(b.publisher||'')}</p>
+        ${b.pages?`<p>${b.pages}쪽 · 두께 약 ${thickCm(b).toFixed(1)}cm</p>`:''}
+        ${b.widthMm&&b.heightMm?`<p>${b.widthMm}×${b.heightMm}mm</p>`:b.heightMm?`<p>세로 ${b.heightMm/10}cm</p>`:''}
+        ${b.category?`<p>${esc(b.category)}</p>`:''}
+        <p>${b.start?esc(b.start)+' ~ ':''}${esc(b.end||'')}${days>0?` (${days}일)`:''}</p>
+        <p class="stars" style="font-size:18px">${starStr(b.rating)}</p>
+      </div></div>
+    ${b.review?`<div class="review">${esc(b.review)}</div>`:''}
+    ${(b.quotes||[]).length?`<div class="label">💬 인상 깊은 문장</div><div class="quoteList">${b.quotes.map(q=>`<div class="q"><p>“${esc(q.text)}” ${q.page?`<small>p.${esc(q.page)}</small>`:''}</p></div>`).join('')}</div>`:''}
+    ${b.status==='reading'?'<button class="btn" id="dDone" style="margin-top:10px">🎉 다 읽었어요!</button>':''}
+    <div class="btns"><button class="btn ghost" id="dEdit">✏️ 수정</button><button class="btn ghost" id="dShare">🔗 공유</button></div>
+    <button class="btn danger" id="dDel" style="margin-top:8px">삭제</button>`,
+  m=>{
+    m.querySelector('#dEdit').onclick=()=>openEdit(b);
+    const dd=m.querySelector('#dDone'); if(dd) dd.onclick=()=>openEdit({...b,status:'done',end:today()});
+    m.querySelector('#dShare').onclick=async()=>{
+      const txt=`📚 ${b.title}${b.author?' / '+b.author:''}\n${starStr(b.rating)}\n${b.review||''}${(b.quotes||[])[0]?`\n\n“${b.quotes[0].text}”`:''}`;
+      if(navigator.share) navigator.share({text:txt}).catch(()=>{}); else {await navigator.clipboard.writeText(txt);toast('클립보드에 복사했어요')}
+    };
+    m.querySelector('#dDel').onclick=()=>{if(confirm(`「${b.title}」 기록을 삭제할까요?`)){books=books.filter(x=>x.id!==b.id);save();closeModal();render();toast('삭제했어요')}};
+  });
+}
+
+/* ================== 설정 ================== */
+$('#goalSave').onclick=()=>{cfg.goal=Math.max(1,+$('#goalIn').value||30);saveCfg();toast('목표를 저장했어요')};
+$('#keySave').onclick=()=>{cfg.kakaoKey=$('#kakaoKey').value.trim();cfg.googleKey=$('#googleKey').value.trim();cfg.nlKey=$('#nlKey').value.trim();saveCfg();toast('저장했어요')};
+$('#keyTest').onclick=async e=>{
+  $('#keySave').click();
+  const out=$('#testOut'); out.classList.remove('hidden'); out.textContent='테스트 중…';
+  const lines=[];
+  if(cfg.kakaoKey){try{const r=await searchKakao('데미안');lines.push(`✅ 카카오: ${r.length}건 (첫 결과: ${r[0]?.title||'-'})`)}catch(err){lines.push('❌ 카카오: '+err.message+' (키 확인)')}}
+  else lines.push('⚪ 카카오: 키 없음');
+  if(cfg.nlKey){
+    try{
+      const d=(await nlQuery({page_size:'1',isbn:'9791161571188'}))[0];
+      if(d){
+        const n=nlToBook(d);
+        lines.push(`✅ 국립중앙도서관: ${n.title}`);
+        lines.push(`   해석 결과: 쪽수 ${n.pages||'?'} · 가로 ${n.widthMm||'?'}mm · 세로 ${n.heightMm||'?'}mm · 분류 ${n.category||'?'}`);
+        lines.push('   원본: '+JSON.stringify({PAGE:d.PAGE,BOOK_SIZE:d.BOOK_SIZE,SUBJECT:d.SUBJECT,KDC:d.KDC,TITLE_URL:d.TITLE_URL}));
+      } else lines.push('⚠️ 국립중앙도서관: 키는 정상이지만 테스트 책의 정보가 없어요');
+    }catch(err){lines.push('❌ 국립중앙도서관: '+err.message)}
+  } else lines.push('⚪ 국립중앙도서관: 키 없음');
+  out.textContent=lines.join('\n');
+};
+$('#exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:'bookstack',v:1,books,cfg:{goal:cfg.goal}},null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`책탑_백업_${today()}.json`;a.click();
+};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async e=>{
+  try{
+    const j=JSON.parse(await e.target.files[0].text());
+    if(!Array.isArray(j.books)) throw 0;
+    if(!confirm(`${j.books.length}권을 가져옵니다. 같은 기록은 덮어쓰고 나머지는 합칠까요?`)) return;
+    const map=new Map(books.map(b=>[b.id,b])); j.books.forEach(b=>map.set(b.id,b));
+    books=[...map.values()]; if(j.cfg?.goal) cfg.goal=j.cfg.goal; save(); saveCfg(); toast('가져오기 완료'); render();
+  }catch(_){toast('백업 파일을 읽지 못했어요')}
+};
+$('#refetchAll').onclick=async e=>{
+  const targets=books.filter(b=>!b.cover||!b.pages||(cfg.nlKey&&!b.heightMm)); if(!targets.length) return toast('보완할 책이 없어요');
+  let ok=0;
+  for(const [i,b] of targets.entries()){
+    e.target.innerHTML=`<span class="spin"></span> ${i+1}/${targets.length}`;
+    const before=JSON.stringify(b);
+    if(!b.cover||!b.isbn){const c=await findCover(b).catch(()=>''); if(c&&!b.cover) b.cover=c;}
+    await enrich(b).catch(()=>{});
+    if(JSON.stringify(b)!==before){ok++;save()}
+  }
+  e.target.textContent='🖼️ 표지·두께 일괄 보완'; toast(`${ok}권을 보완했어요`); render();
+};
+$('#sampleBtn').onclick=async e=>{
+  const y=new Date().getFullYear(), m=pad(new Date().getMonth()+1);
+  const s=[['사피엔스','유발 하라리',636,5],['데미안','헤르만 헤세',248,4],['어린 왕자','생텍쥐페리',140,5],['죽음의 수용소에서','빅터 프랭클',224,5],
+    ['사랑의 기술','에리히 프롬',196,4],['명상록','마르쿠스 아우렐리우스',336,4],['아몬드','손원평',268,4],['불편한 편의점','김호연',268,3],
+    ['코스모스','칼 세이건',720,5],['채식주의자','한강',247,4]];
+  e.target.innerHTML='<span class="spin"></span> 표지 불러오는 중…';
+  for(const [i,[t,a,p,r]] of s.entries()){
+    const d=new Date(); d.setDate(d.getDate()-i*4-1);
+    const b={id:uid(),title:t,author:a,publisher:'',cover:'',isbn:'',pages:p,status:'done',start:'',end:ymd(d),rating:r,review:'',quotes:[],createdAt:new Date().toISOString()};
+    b.cover=await findCover(b).catch(()=>'');
+    books.push(b);
+  }
+  books.find(b=>b.title==='데미안').quotes=[{text:'새는 알에서 나오려고 투쟁한다. 알은 세계이다.',page:'123'}];
+  save(); e.target.textContent='예시 책 10권 넣어보기'; toast('예시를 넣었어요'); go('stack');
+};
+
+render();
+</script>
+</body>
+</html>
