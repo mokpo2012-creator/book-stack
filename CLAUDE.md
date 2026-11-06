@@ -6,6 +6,8 @@
 ## 구조
 
 - `index.html` 파일 하나가 앱 전체입니다 (빌드 없음, 라이브러리 없음, 서버 없음).
+- 저장소: https://github.com/mokpo2012-creator/book-stack (공개)
+- 배포 주소: https://mokpo2012-creator.github.io/book-stack/
 - 배포: GitHub Pages가 `main` 브랜치 최상위를 그대로 공개합니다. push하면 1~2분 뒤 반영됩니다.
 - 책 정보는 사용자의 브라우저가 각 API를 직접 호출합니다. 중계 서버는 없고 필요하지도 않습니다.
 - 저장: 브라우저 localStorage의 `bookstack.books`(기록)와 `bookstack.cfg`(설정·API 키).
