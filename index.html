@@ -614,6 +614,25 @@ async function enrich(b){
   if(!b.pages){try{const r=await searchGoogle('isbn:'+b.isbn); if(r[0]?.pages) b.pages=r[0].pages;}catch(e){}}
   return b;
 }
+// 일괄 보완용: 제목이 맞고 저자나 출판사도 맞는 결과만 쓴다. 다른 판본의 ISBN은 가져오지 않는다
+const normBook=s=>String(s||'').replace(/\(.*?\)/g,'').replace(/[^0-9a-zA-Z가-힣]/g,'').toLowerCase();
+async function findCoverExact(b){
+  const name=String(b.title||'').replace(/\s*\(.*?\)/g,'').trim(), first=String(b.author||'').split(',')[0].trim();
+  const nt=normBook(name), np=normBook(b.publisher), na=normBook(first);
+  for(const q of [`${name} ${first}`.trim(),name]){
+    const hits=(await searchBooks(q)).filter(x=>{
+      const ht=normBook(x.title);
+      return x.cover&&ht&&(ht.includes(nt)||nt.includes(ht));
+    }).map(x=>({x,pub:!!np&&normBook(x.publisher)===np,auth:!!na&&normBook(x.author).includes(na)}))
+      .filter(h=>h.pub||h.auth||(!np&&!na));
+    const hit=hits.find(h=>h.pub&&h.auth)||hits.find(h=>h.pub)||hits[0];
+    if(!hit) continue;
+    if(hit.pub&&!b.isbn&&hit.x.isbn) b.isbn=hit.x.isbn;
+    if(!b.author&&hit.x.author) b.author=hit.x.author;
+    return hit.x.cover;
+  }
+  return '';
+}
 async function findCover(b){
   const q=b.isbn?b.isbn:`${b.title} ${b.author||''}`.trim();
   const r=await searchBooks(q);
@@ -675,7 +694,7 @@ function filtered(){
   const list=books.filter(b=>{
     if(!re&&selYear!=='all'&&bookDate(b).slice(0,4)!==selYear) return false; // 검색은 모든 연도에서 찾는다
     if(st!=='all'&&b.status!==st) return false;
-    return !re||re.test([b.title,b.author,b.publisher,b.isbn,b.category,b.review,...(b.quotes||[]).map(x=>x.text)].join('\n'));
+    return !re||re.test([b.title,b.subtitle,b.author,b.publisher,b.isbn,b.category,b.review,...(b.quotes||[]).map(x=>x.text)].join('\n'));
   });
   if(!re) return list.sort(byDate);
   const named=b=>re.test(b.title||'')||re.test(b.author||'')?0:1; // 제목·저자에서 찾은 책을 먼저
@@ -1286,6 +1305,7 @@ function openDetail(id){
   modal(`<div class="sheetHead"><span class="badge ${b.status}">${statusName[b.status]}</span><button class="iconbtn" data-close>✕</button></div>
     <div class="detailTop">${cvHtml(b)}
       <div><h2>${esc(b.title)}</h2>
+        ${b.subtitle?`<p>${esc(b.subtitle)}</p>`:''}
         <p>${esc(b.author||'')}</p><p>${esc(b.publisher||'')}</p>
         ${b.pages?`<p>${b.pages}쪽 · 두께 약 ${thickCm(b).toFixed(1)}cm</p>`:''}
         ${b.widthMm&&b.heightMm?`<p>${b.widthMm}×${b.heightMm}mm</p>`:b.heightMm?`<p>세로 ${b.heightMm/10}cm</p>`:''}
@@ -1351,11 +1371,12 @@ $('#refetchAll').onclick=async e=>{
   for(const [i,b] of targets.entries()){
     e.target.innerHTML=`<span class="spin"></span> ${i+1}/${targets.length}`;
     const before=JSON.stringify(b);
-    if(!b.cover||!b.isbn){const c=await findCover(b).catch(()=>''); if(c&&!b.cover) b.cover=c;}
+    if(!b.cover||!b.isbn){const c=await (b.isbn?findCover(b):findCoverExact(b)).catch(()=>''); if(c&&!b.cover) b.cover=c;}
     await enrich(b).catch(()=>{});
     if(JSON.stringify(b)!==before){ok++;save()}
   }
-  e.target.textContent='🖼️ 표지·두께 일괄 보완'; toast(`${ok}권을 보완했어요`); render();
+  const noCover=books.filter(b=>!b.cover).length;
+  e.target.textContent='🖼️ 표지·두께 일괄 보완'; toast(`${ok}권을 보완했어요`+(noCover?` · 표지 없는 책 ${noCover}권`:'')); render();
 };
 $('#sampleBtn').onclick=async e=>{
   const y=new Date().getFullYear(), m=pad(new Date().getMonth()+1);
