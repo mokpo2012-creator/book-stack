@@ -10,6 +10,7 @@
 - 저장소: https://github.com/mokpo2012-creator/book-stack (공개)
 - 배포 주소: https://mokpo2012-creator.github.io/book-stack/
 - 배포: GitHub Pages가 `main` 브랜치 최상위를 그대로 공개합니다. push하면 1~2분 뒤 반영됩니다.
+- **사용자 요청(2026-11-07): 작업과 확인이 끝나면 묻지 않고 `main`까지 바로 반영합니다.** PR은 따로 요청할 때만 만듭니다. 작업 브랜치가 따로 정해져 있으면 그 브랜치에도 함께 push합니다.
 - 책 정보는 사용자의 브라우저가 각 API를 직접 호출합니다. 중계 서버는 없고 필요하지도 않습니다.
 - 저장: 브라우저 localStorage의 `bookstack.books`(기록), `bookstack.cfg`(설정·API 키·동기화 주소와 비밀 문구), `bookstack.sync`(동기화 대기 목록).
   기기와 주소마다 따로 저장되며, 기기 간 이동은 구글 시트 동기화나 설정의 JSON 백업으로 합니다. 백업에 API 키와 비밀 문구는 포함되지 않습니다.
