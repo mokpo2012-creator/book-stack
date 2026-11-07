@@ -66,6 +66,7 @@ header select{background:#eadfca;border-color:#d9c9ae}
 .spine .sp-text{position:relative;z-index:3;display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;text-shadow:0 0 3px var(--ts),0 0 2px var(--ts),0 1px 1px var(--ts)}
 .spine .sp-t{font-weight:800;font-size:var(--tsize,14px);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.01em}
 .spine .sp-a{font-weight:600;font-size:calc(var(--tsize,14px)*.78);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:100;min-width:0}
+.spine .sp-real{background-size:100% 100%}
 .spine .ribbon{position:absolute;z-index:4;left:0;top:0;width:7px;height:100%;background:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.5)}
 /* 책장 보기: 평점별 칸에 표지를 가로로 진열 */
 .shelfWrap{width:100%}
@@ -204,6 +205,17 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
 .quoteList .q small{color:var(--sub)}
 .detailTop{display:flex;gap:16px;margin-bottom:16px}
 .detailTop .cv{width:110px;height:158px;border-radius:6px;flex-shrink:0;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+.cvWrap{position:relative;flex-shrink:0;align-self:flex-start}
+.cvSearch{position:absolute;right:6px;bottom:6px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.92);box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:16px;cursor:pointer}
+.spineBox{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:14px}
+.spineBox .spPrev{width:34px;height:120px;flex-shrink:0;border-radius:3px;background:var(--card2) center/100% 100% no-repeat;display:grid;place-items:center;color:var(--sub);font-size:10px;text-align:center;line-height:1.3}
+.spineBox .side{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.spineBox .side .btn{padding:9px;font-size:13px}
+.spineBox small{color:var(--sub);font-size:12px;line-height:1.45}
+.cropWrap{position:relative;overflow:hidden;margin:0 auto 10px;width:fit-content;max-width:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+.cropWrap img{display:block;max-width:100%;max-height:58vh;-webkit-user-drag:none;pointer-events:none}
+.cropBox{position:absolute;border:2px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none}
+.cropHint{font-size:13px;color:var(--sub);line-height:1.55;margin:0 0 10px}
 .detailTop h2{margin:0 0 6px;font-size:19px;line-height:1.35}
 .detailTop p{margin:3px 0;color:var(--sub);font-size:13px}
 .review{background:var(--card);border-radius:12px;padding:12px 14px;line-height:1.65;white-space:pre-wrap;font-size:14px;margin-bottom:14px}
@@ -336,6 +348,7 @@ const COLS = [['id','ID'],['isbn','ISBN'],['title','제목'],['author','저자']
 const KEYS = COLS.map(c => c[0]);
 const NUMBERS = ['pages', 'widthMm', 'heightMm', 'rating'];
 const CELL_LIMIT = 50000;
+const PHOTOS = ['cover', 'spineImg']; // 직접 넣은 사진이 들어가는 필드
 
 function json_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
@@ -399,13 +412,14 @@ function folder_() {
   return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
 }
 // 직접 찍은 사진은 칸에 들어가지 않아 드라이브에 저장하고 시트에는 주소만 적는다
-function saveCover_(b) {
-  const m = String(b.cover).match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+function saveCover_(b, k) {
+  const m = String(b[k]).match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
   if (!m) return '';
-  const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], b.id + '.jpg');
+  const spine = k === 'spineImg';
+  const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], b.id + (spine ? '_책등' : '') + '.jpg');
   const file = folder_().createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w600';
+  return 'https://drive.google.com/thumbnail?id=' + file.getId() + (spine ? '&sz=h800' : '&sz=w600');
 }
 function trashCover_(url) {
   const m = String(url).match(/^https:\/\/drive\.google\.com\/thumbnail\?id=([\w-]+)/);
@@ -428,10 +442,11 @@ function sync_(changes) {
     if (old && time_(old.updatedAt) >= time_(c.updatedAt)) return;
     try {
       const b = c.deleted ? { id: c.id, updatedAt: c.updatedAt, deleted: true } : Object.assign({}, c);
-      const isPhoto = String(b.cover || '').indexOf('data:') === 0;
-      const tooLong = toRow_(isPhoto ? Object.assign({}, b, { cover: '' }) : b).some(v => v.length >= CELL_LIMIT);
-      if (tooLong) throw new Error('too_long');
-      if (isPhoto) b.cover = saveCover_(b);
+      const photos = PHOTOS.filter(k => String(b[k] || '').indexOf('data:') === 0);
+      const plain = Object.assign({}, b);
+      photos.forEach(k => { plain[k] = ''; });
+      if (toRow_(plain).some(v => v.length >= CELL_LIMIT)) throw new Error('too_long');
+      photos.forEach(k => { b[k] = saveCover_(b, k); });
       const row = toRow_(b);
       let r = rowOf[c.id];
       if (!r) {
@@ -441,7 +456,7 @@ function sync_(changes) {
       }
       // 글자 형식으로 먼저 지정해야 날짜와 ISBN이 자동 변환되지 않는다
       sh.getRange(r, 1, 1, n).setNumberFormat('@').setValues([row]);
-      if (old && old.cover && old.cover !== b.cover) trashCover_(old.cover);
+      if (old) PHOTOS.forEach(k => { if (old[k] && old[k] !== b[k]) trashCover_(old[k]); });
       cur[c.id] = fromRow_(row);
     } catch (err) {
       rejected.push({ id: c.id, error: err.message });
@@ -865,10 +880,15 @@ function spineInner(b,room){
   return `<span class="sp-text"><span class="sp-t">${esc(b.title)}</span>${showAuthor?`<span class="sp-a">${esc(author)}</span>`:''}</span>${b.status==='reading'?'<i class="ribbon"></i>':''}`;
 }
 function spineHtml(b,z=0){
-  const h=Math.round(Math.max(30,Math.min(76,20+(b.pages||280)/11)));
   // 너비: 실제 세로 길이(판형)가 있으면 반영, 없으면 임의
   const w=b.heightMm?Math.max(62,Math.min(92,70+(b.heightMm-180)*0.33)):70+hash(b.id)%20;
   const px=Math.round((Math.min(innerWidth,520)-32)*w/100);
+  if(b.spineImg&&b.spineAspect){
+    // 두께는 다른 책과 같게 쪽수로 정하고, 쪽수가 없을 때만 책등 이미지 비율을 쓴다
+    const h=Math.round(b.pages?Math.max(30,Math.min(76,20+b.pages/11)):Math.max(24,Math.min(76,px*b.spineAspect)));
+    return `<div class="spine" data-id="${b.id}" style="${spineVars(b)}height:${h}px;width:${w}%;z-index:${z}"><i class="sp-img sp-real" style="background-image:url('${esc(b.spineImg)}');width:${h}px;height:${px}px;"></i>${b.status==='reading'?'<i class="ribbon"></i>':''}</div>`;
+  }
+  const h=Math.round(Math.max(30,Math.min(76,20+(b.pages||280)/11)));
   return `<div class="spine" data-id="${b.id}" style="${spineVars(b)}height:${h}px;width:${w}%;z-index:${z}">${spineImg(b,`width:${h}px;height:${px}px;`)}${spineInner(b,px-30)}</div>`;
 }
 /* ---------- 책장 보기: 평점별로 표지를 가로 진열 ---------- */
@@ -1312,12 +1332,147 @@ function pickImage(cb){
   inp.click();
 }
 
+/* ================== 책등 이미지 (교보문고 스크린샷에서 잘라 넣기) ================== */
+// 교보문고는 공개 API가 없어 검색 화면만 열어 준다. ISBN이 있으면 판본이 정확히 나온다
+const kyoboUrl=b=>{
+  const isbn=String(b.isbn||'').replace(/[^\dXx]/g,'');
+  return 'https://search.kyobobook.co.kr/search?keyword='+encodeURIComponent(isbn.length>=10?isbn:b.title);
+};
+function pickFile(cb){
+  const inp=$('#coverFile'); inp.value='';
+  inp.onchange=()=>{const f=inp.files[0]; if(f) cb(f)};
+  inp.click();
+}
+async function pasteImage(){
+  try{
+    for(const item of await navigator.clipboard.read()){
+      const type=item.types.find(t=>t.startsWith('image/'));
+      if(type) return await item.getType(type);
+    }
+    toast('복사된 이미지가 없어요');
+  }catch(e){toast('붙여넣기를 할 수 없어요. 책등 사진 넣기를 써 주세요')}
+  return null;
+}
+function loadImageFile(f){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(f);
+    img.onload=()=>{
+      // 큰 사진은 메모리를 아끼려고 긴 변 2400px로 줄여 둔다
+      const s=Math.min(1,2400/Math.max(img.width,img.height)), c=document.createElement('canvas');
+      c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url); res(c);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('image'))};
+    img.src=url;
+  });
+}
+// 바탕색과 다른 픽셀끼리 이어진 덩어리를 찾아, 세로로 길고 꽉 찬 덩어리를 책등으로 본다
+function spineRegions(canvas){
+  const S=Math.min(1,360/Math.max(canvas.width,canvas.height));
+  const w=Math.max(1,Math.round(canvas.width*S)), h=Math.max(1,Math.round(canvas.height*S));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(canvas,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data, count=new Map();
+  for(let i=0;i<d.length;i+=4){const k=(d[i]>>4)<<8|(d[i+1]>>4)<<4|d[i+2]>>4;count.set(k,(count.get(k)||0)+1)}
+  const top=[...count.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+  const bg=[(top>>8&15)*16+8,(top>>4&15)*16+8,(top&15)*16+8];
+  const mask=new Uint8Array(w*h);
+  for(let p=0;p<w*h;p++){const i=p*4;mask[p]=Math.max(Math.abs(d[i]-bg[0]),Math.abs(d[i+1]-bg[1]),Math.abs(d[i+2]-bg[2]))>36?1:0}
+  const label=new Int32Array(w*h).fill(-1), regions=[], stack=[];
+  for(let p0=0;p0<w*h;p0++){
+    if(!mask[p0]||label[p0]>=0) continue;
+    const r={x0:w,y0:h,x1:0,y1:0,n:0,id:regions.length};
+    label[p0]=r.id; stack.push(p0);
+    while(stack.length){
+      const p=stack.pop(), px=p%w, py=(p-px)/w; r.n++;
+      if(px<r.x0)r.x0=px; if(px>r.x1)r.x1=px; if(py<r.y0)r.y0=py; if(py>r.y1)r.y1=py;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=px+dx, ny=py+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
+        const q=ny*w+nx; if(mask[q]&&label[q]<0){label[q]=r.id;stack.push(q)}
+      }
+    }
+    regions.push(r);
+  }
+  const toBox=r=>({x:r.x0/S,y:r.y0/S,w:(r.x1-r.x0+1)/S,h:(r.y1-r.y0+1)/S});
+  const best=()=>{
+    let pick=null,score=0;
+    for(const r of regions){
+      const bw=r.x1-r.x0+1, bh=r.y1-r.y0+1, fill=r.n/(bw*bh);
+      if(bh<20||bh<bw*2||fill<.5) continue;
+      if(r.n>score){score=r.n;pick=r}
+    }
+    return pick&&toBox(pick);
+  };
+  const at=(fx,fy)=>{ // 누른 곳(원본 좌표)에서 가장 가까운 덩어리
+    const cx=Math.round(fx*S), cy=Math.round(fy*S);
+    for(let rad=0;rad<=6;rad++)for(let dy=-rad;dy<=rad;dy++)for(let dx=-rad;dx<=rad;dx++){
+      const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
+      const l=label[ny*w+nx]; if(l>=0) return toBox(regions[l]);
+    }
+    return null;
+  };
+  return {best,at};
+}
+// 잘라 낸 책등은 시트 칸(5만 자)에도 들어가도록 3만 자 안쪽의 JPEG로 만든다
+function spineDataUrl(canvas,box){
+  for(const H of [640,480,360,260]){
+    const outH=Math.min(H,Math.round(box.h)), s=outH/box.h, outW=Math.max(1,Math.round(box.w*s));
+    const c=document.createElement('canvas'); c.width=outW; c.height=outH;
+    c.getContext('2d').drawImage(canvas,box.x,box.y,box.w,box.h,0,0,outW,outH);
+    for(const q of [.85,.75,.62,.5]){const u=c.toDataURL('image/jpeg',q); if(u.length<30000) return u}
+  }
+  return null;
+}
+async function openSpineCrop(b,file){
+  let canvas;
+  try{canvas=await loadImageFile(file)}catch(e){return toast('이미지를 읽지 못했어요')}
+  const finder=spineRegions(canvas);
+  let box=finder.best()||{x:canvas.width*.4,y:canvas.height*.1,w:canvas.width*.2,h:canvas.height*.8};
+  modal(`<div class="sheetHead"><h2>책등 영역 고르기</h2><button class="iconbtn" id="cBack">✕</button></div>
+    <p class="cropHint">책등을 자동으로 찾아 테두리를 쳤어요. 맞지 않으면 책등을 <b>톡 누르거나</b>, 손가락으로 <b>네모를 그려</b> 주세요.</p>
+    <div class="cropWrap" id="cWrap"><img id="cImg" alt=""><div class="cropBox" id="cBox"></div></div>
+    <div class="btns"><button class="btn ghost" id="cAuto">자동으로 다시 찾기</button><button class="btn" id="cSave">이 영역으로 저장</button></div>`,
+  m=>{
+    const $m=s=>m.querySelector(s), img=$m('#cImg'), wrap=$m('#cWrap'), boxEl=$m('#cBox');
+    img.src=canvas.toDataURL('image/jpeg',.9);
+    const scale=()=>img.clientWidth/canvas.width;
+    const draw=()=>{const k=scale();Object.assign(boxEl.style,{left:box.x*k+'px',top:box.y*k+'px',width:box.w*k+'px',height:box.h*k+'px'})};
+    img.onload=draw; addEventListener('resize',draw,{once:true});
+    const pos=e=>{const r=wrap.getBoundingClientRect(),k=scale();
+      return [Math.max(0,Math.min(canvas.width,(e.clientX-r.left)/k)),Math.max(0,Math.min(canvas.height,(e.clientY-r.top)/k))]};
+    let start=null;
+    wrap.onpointerdown=e=>{e.preventDefault();wrap.setPointerCapture(e.pointerId);start=pos(e)};
+    wrap.onpointermove=e=>{
+      if(!start) return; const [x,y]=pos(e);
+      if(Math.hypot(x-start[0],y-start[1])*scale()<8) return;
+      box={x:Math.min(x,start[0]),y:Math.min(y,start[1]),w:Math.abs(x-start[0]),h:Math.abs(y-start[1])}; draw();
+    };
+    wrap.onpointerup=e=>{
+      if(!start) return; const [x,y]=pos(e);
+      if(Math.hypot(x-start[0],y-start[1])*scale()<8){const r=finder.at(x,y); if(r){box=r;draw()} else toast('그 자리에서 책등을 찾지 못했어요')}
+      start=null;
+    };
+    wrap.onpointercancel=()=>{start=null};
+    $m('#cAuto').onclick=()=>{const r=finder.best(); if(r){box=r;draw()} else toast('책등을 찾지 못했어요. 직접 네모를 그려 주세요')};
+    $m('#cBack').onclick=()=>openDetail(b.id);
+    $m('#cSave').onclick=()=>{
+      if(box.w<3||box.h<20) return toast('영역이 너무 작아요');
+      if(box.h<box.w) return toast('책등은 세로로 긴 영역이어야 해요');
+      const url=spineDataUrl(canvas,box); if(!url) return toast('이미지가 너무 커요');
+      b=books.find(x=>x.id===b.id)||b; // 고르는 동안 동기화로 바뀌었을 수 있어 다시 찾는다
+      b.spineImg=url; b.spineAspect=Math.round(box.w/box.h*10000)/10000;
+      save(); render(); openDetail(b.id); toast('책등을 넣었어요');
+    };
+  });
+}
+
 /* ================== 상세 ================== */
 function openDetail(id){
   const b=books.find(x=>x.id===id); if(!b) return;
   const days=b.start&&b.end?Math.round((new Date(b.end)-new Date(b.start))/864e5)+1:0;
   modal(`<div class="sheetHead"><span class="badge ${b.status}">${statusName[b.status]}</span><button class="iconbtn" data-close>✕</button></div>
-    <div class="detailTop">${cvHtml(b)}
+    <div class="detailTop"><div class="cvWrap">${cvHtml(b)}<button class="cvSearch" id="dKyobo" title="교보문고에서 찾기">🔍</button></div>
       <div><h2>${esc(b.title)}</h2>
         ${b.subtitle?`<p>${esc(b.subtitle)}</p>`:''}
         <p>${esc(b.author||'')}</p><p>${esc(b.publisher||'')}</p>
@@ -1327,6 +1482,15 @@ function openDetail(id){
         <p>${b.start?esc(b.start)+' ~ ':''}${esc(b.end||'')}${days>0?` (${days}일)`:''}</p>
         <p class="stars" style="font-size:18px">${starStr(b.rating)}</p>
       </div></div>
+    <div class="spineBox">
+      <div class="spPrev" ${b.spineImg?`style="background-image:url('${esc(b.spineImg)}')"`:''}>${b.spineImg?'':'책등<br>없음'}</div>
+      <div class="side">
+        <small>🔍로 교보문고를 열어 책등 이미지를 스크린샷으로 찍은 뒤 넣어 주세요.</small>
+        <button class="btn ghost" id="dSpinePick">🖼️ 책등 사진 넣기</button>
+        <button class="btn ghost" id="dSpinePaste">📋 복사한 이미지 붙여넣기</button>
+        ${b.spineImg?'<button class="btn ghost" id="dSpineDel">책등 이미지 지우기</button>':''}
+      </div>
+    </div>
     ${b.review?`<div class="review">${esc(b.review)}</div>`:''}
     ${(b.quotes||[]).length?`<div class="label">💬 인상 깊은 문장</div><div class="quoteList">${b.quotes.map(q=>`<div class="q"><p>“${esc(q.text)}” ${q.page?`<small>p.${esc(q.page)}</small>`:''}</p></div>`).join('')}</div>`:''}
     ${b.status==='reading'?'<button class="btn" id="dDone" style="margin-top:10px">🎉 다 읽었어요!</button>':''}
@@ -1334,6 +1498,13 @@ function openDetail(id){
     <button class="btn danger" id="dDel" style="margin-top:8px">삭제</button>`,
   m=>{
     m.querySelector('#dEdit').onclick=()=>openEdit(b);
+    m.querySelector('#dKyobo').onclick=()=>window.open(kyoboUrl(b),'_blank','noopener');
+    m.querySelector('#dSpinePick').onclick=()=>pickFile(f=>openSpineCrop(b,f));
+    m.querySelector('#dSpinePaste').onclick=async()=>{
+      const f=await pasteImage(); if(f) openSpineCrop(b,f);
+    };
+    const sd=m.querySelector('#dSpineDel');
+    if(sd) sd.onclick=()=>{delete b.spineImg;delete b.spineAspect;save();render();openDetail(b.id);toast('책등 이미지를 지웠어요')};
     const dd=m.querySelector('#dDone'); if(dd) dd.onclick=()=>openEdit({...b,status:'done',end:today()});
     m.querySelector('#dShare').onclick=async()=>{
       const txt=`📚 ${b.title}${b.author?' / '+b.author:''}\n${starTxt(b.rating)}\n${b.review||''}${(b.quotes||[])[0]?`\n\n“${b.quotes[0].text}”`:''}`;
