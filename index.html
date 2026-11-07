@@ -1471,11 +1471,36 @@ function spineDataUrl(canvas,box){
   }
   return null;
 }
+// 고른 영역의 가장자리에 남은 흰 여백(서점 이미지의 테두리)을 잘라 내고, 경계선이 비치지 않게 조금 더 안쪽으로 잡는다.
+// 책등 일부가 조금 잘려도 흰 줄이 보이는 것보다 자연스럽다. 흰 책등이라 거의 다 잘려 나가면 그 방향은 자르지 않는다
+function tightBox(canvas,box){
+  const bx=Math.max(0,Math.floor(box.x)), by=Math.max(0,Math.floor(box.y));
+  const bw=Math.min(canvas.width-bx,Math.ceil(box.w)), bh=Math.min(canvas.height-by,Math.ceil(box.h));
+  if(bw<3||bh<3) return box;
+  const d=canvas.getContext('2d',{willReadFrequently:true}).getImageData(bx,by,bw,bh).data;
+  const light=(x,y)=>{const i=(y*bw+x)*4,mn=Math.min(d[i],d[i+1],d[i+2]),mx=Math.max(d[i],d[i+1],d[i+2]);return d[i+3]<128||(mn>=215&&mx-mn<=24)};
+  // 책등 색이 몇 줄 이어지는 곳부터 책등으로 본다. 그래야 얇은 회색 테두리선과 그 안쪽 흰 여백도 함께 잘린다
+  const colIn=[...Array(bw).keys()].map(x=>{let n=0;for(let y=0;y<bh;y++) n+=!light(x,y);return n/bh>=.6});
+  const rowIn=[...Array(bh).keys()].map(y=>{let n=0;for(let x=0;x<bw;x++) n+=!light(x,y);return n/bw>=.6});
+  const edge=(arr,k,from,step)=>{
+    for(let i=from;i>=0&&i<arr.length;i+=step){let ok=true;for(let j=0;j<k;j++){const q=i+j*step;if(q<0||q>=arr.length||!arr[q]){ok=false;break}} if(ok) return i}
+    return -1;
+  };
+  const kx=Math.max(3,Math.round(bw*.06)), ky=Math.max(3,Math.round(bh*.01));
+  let l=edge(colIn,kx,0,1), r=edge(colIn,kx,bw-1,-1), t=edge(rowIn,ky,0,1), btm=edge(rowIn,ky,bh-1,-1);
+  if(l<0||r<l){l=0;r=bw-1}
+  if(t<0||btm<t){t=0;btm=bh-1}
+  if(r-l+1<bw*.4){l=0;r=bw-1}
+  if(btm-t+1<bh*.6){t=0;btm=bh-1}
+  const w=r-l+1, h=btm-t+1, ix=Math.max(1,Math.round(w*.03)), iy=Math.max(1,Math.round(h*.006));
+  return {x:bx+l+ix,y:by+t+iy,w:Math.max(1,w-ix*2),h:Math.max(1,h-iy*2)};
+}
 async function openSpineCrop(b,file){
   let canvas;
   try{canvas=await loadImageFile(file)}catch(e){return toast('이미지를 읽지 못했어요')}
   const finder=spineRegions(canvas);
-  let box=finder.best()||{x:canvas.width*.4,y:canvas.height*.1,w:canvas.width*.2,h:canvas.height*.8};
+  const auto=finder.best();
+  let box=auto?tightBox(canvas,auto):{x:canvas.width*.4,y:canvas.height*.1,w:canvas.width*.2,h:canvas.height*.8};
   modal(`<div class="sheetHead"><h2>책등 영역 고르기</h2><button class="iconbtn" id="cBack">✕</button></div>
     <p class="cropHint">책등을 자동으로 찾아 테두리를 쳤어요. 맞지 않으면 책등을 <b>톡 누르거나</b>, 손가락으로 <b>네모를 그려</b> 주세요.</p>
     <div class="cropWrap" id="cWrap"><img id="cImg" alt=""><div class="cropBox" id="cBox"></div></div>
@@ -1497,11 +1522,12 @@ async function openSpineCrop(b,file){
     };
     wrap.onpointerup=e=>{
       if(!start) return; const [x,y]=pos(e);
-      if(Math.hypot(x-start[0],y-start[1])*scale()<8){const r=finder.at(x,y); if(r){box=r;draw()} else toast('그 자리에서 책등을 찾지 못했어요')}
+      if(Math.hypot(x-start[0],y-start[1])*scale()>=8) {box=tightBox(canvas,box);draw()}
+      else{const r=finder.at(x,y); if(r){box=tightBox(canvas,r);draw()} else toast('그 자리에서 책등을 찾지 못했어요')}
       start=null;
     };
     wrap.onpointercancel=()=>{start=null};
-    $m('#cAuto').onclick=()=>{const r=finder.best(); if(r){box=r;draw()} else toast('책등을 찾지 못했어요. 직접 네모를 그려 주세요')};
+    $m('#cAuto').onclick=()=>{const r=finder.best(); if(r){box=tightBox(canvas,r);draw()} else toast('책등을 찾지 못했어요. 직접 네모를 그려 주세요')};
     $m('#cBack').onclick=()=>openDetail(b.id);
     $m('#cSave').onclick=()=>{
       if(box.w<3||box.h<20) return toast('영역이 너무 작아요');
