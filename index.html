@@ -1367,71 +1367,96 @@ function loadImageFile(f){
     img.src=url;
   });
 }
-// 바탕색과 다른 픽셀끼리 이어진 덩어리를 찾아, 세로로 길고 꽉 찬 덩어리를 책등으로 본다
-function spineRegions(canvas){
-  const S=Math.min(1,360/Math.max(canvas.width,canvas.height));
-  const w=Math.max(1,Math.round(canvas.width*S)), h=Math.max(1,Math.round(canvas.height*S));
-  const c=document.createElement('canvas'); c.width=w; c.height=h;
-  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(canvas,0,0,w,h);
-  const d=x.getImageData(0,0,w,h).data, count=new Map(), mask=new Uint8Array(w*h);
-  let clear=0; for(let i=3;i<d.length;i+=4) if(d[i]<128) clear++;
-  if(clear>w*h*.05){
-    // 사진 앱의 '주체 복사'로 배경이 지워진 이미지는 보이는 부분이 곧 책등이다
-    for(let p=0;p<w*h;p++) mask[p]=d[p*4+3]>=128?1:0;
-  }else{
-    for(let i=0;i<d.length;i+=4){const k=(d[i]>>4)<<8|(d[i+1]>>4)<<4|d[i+2]>>4;count.set(k,(count.get(k)||0)+1)}
-    const top=[...count.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-    const bg=[(top>>8&15)*16+8,(top>>4&15)*16+8,(top&15)*16+8];
-    for(let p=0;p<w*h;p++){const i=p*4;mask[p]=Math.max(Math.abs(d[i]-bg[0]),Math.abs(d[i+1]-bg[1]),Math.abs(d[i+2]-bg[2]))>30?1:0}
-  }
+// 픽셀 덩어리(8방향으로 이어진 칸)를 찾는다. rect 밖은 보지 않는다
+function blobs(mask,w,h,rect){
   const label=new Int32Array(w*h).fill(-1), regions=[], stack=[];
-  for(let p0=0;p0<w*h;p0++){
-    if(!mask[p0]||label[p0]>=0) continue;
+  for(let y0=rect.y0;y0<=rect.y1;y0++)for(let x0=rect.x0;x0<=rect.x1;x0++){
+    const p0=y0*w+x0; if(!mask[p0]||label[p0]>=0) continue;
     const r={x0:w,y0:h,x1:0,y1:0,n:0,id:regions.length};
     label[p0]=r.id; stack.push(p0);
     while(stack.length){
       const p=stack.pop(), px=p%w, py=(p-px)/w; r.n++;
       if(px<r.x0)r.x0=px; if(px>r.x1)r.x1=px; if(py<r.y0)r.y0=py; if(py>r.y1)r.y1=py;
       for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-        const nx=px+dx, ny=py+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
+        const nx=px+dx, ny=py+dy; if(nx<rect.x0||ny<rect.y0||nx>rect.x1||ny>rect.y1) continue;
         const q=ny*w+nx; if(mask[q]&&label[q]<0){label[q]=r.id;stack.push(q)}
       }
     }
     regions.push(r);
   }
-  const toBox=r=>({x:r.x0/S,y:r.y0/S,w:(r.x1-r.x0+1)/S,h:(r.y1-r.y0+1)/S});
-  // 책등 중간에 바탕색과 같은 띠가 있으면 조각나므로, 같은 세로줄에서 바짝 붙은 조각은 하나로 합친다
-  const groups=regions.filter(r=>r.n>=4).map(r=>({...r}));
-  for(let again=true;again;){
-    again=false;
-    for(let i=0;i<groups.length&&!again;i++)for(let j=i+1;j<groups.length&&!again;j++){
-      const a=groups[i], c=groups[j];
-      const ov=Math.min(a.x1,c.x1)-Math.max(a.x0,c.x0)+1, minW=Math.min(a.x1-a.x0,c.x1-c.x0)+1;
-      const gap=Math.max(a.y0,c.y0)-Math.min(a.y1,c.y1);
-      if(ov>=minW*.8&&gap<=4&&Math.abs((a.x1-a.x0)-(c.x1-c.x0))<=Math.max(3,minW*.25)){
-        a.x0=Math.min(a.x0,c.x0);a.x1=Math.max(a.x1,c.x1);a.y0=Math.min(a.y0,c.y0);a.y1=Math.max(a.y1,c.y1);a.n+=c.n;
-        groups.splice(j,1); again=true;
-      }
+  return {label,regions};
+}
+// 책등 찾기: 서점 화면은 책 이미지가 흰 칸 안에 있으므로 가장 큰 흰 칸을 먼저 찾고 그 안에서 찾는다.
+// 흰 칸 안에서 바탕색과 다른 덩어리 중 세로로 길고 꽉 찬 것을 책등으로 본다
+function spineRegions(canvas){
+  const S=Math.min(1,360/Math.max(canvas.width,canvas.height));
+  const w=Math.max(1,Math.round(canvas.width*S)), h=Math.max(1,Math.round(canvas.height*S));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(canvas,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data, full={x0:0,y0:0,x1:w-1,y1:h-1};
+  let clear=0; for(let i=3;i<d.length;i+=4) if(d[i]<128) clear++;
+  const lifted=clear>w*h*.05; // 사진 앱의 '주체 복사'로 배경이 지워진 이미지
+  const areas=[];
+  if(!lifted){
+    const white=new Uint8Array(w*h);
+    for(let p=0;p<w*h;p++){const i=p*4,mn=Math.min(d[i],d[i+1],d[i+2]),mx=Math.max(d[i],d[i+1],d[i+2]);white[p]=mn>=228&&mx-mn<=16?1:0}
+    const big=blobs(white,w,h,full).regions.sort((a,b)=>b.n-a.n)[0];
+    if(big){
+      const bw=big.x1-big.x0+1, bh=big.y1-big.y0+1;
+      // 화면 전체가 흰 바탕이면 칸으로 보지 않는다
+      if(big.n>w*h*.03&&bw*bh<w*h*.8&&big.n>bw*bh*.5) areas.push({x0:big.x0,y0:big.y0,x1:big.x1,y1:big.y1});
     }
   }
-  const best=()=>{
-    let pick=null,score=0;
-    for(const r of groups){
-      const bw=r.x1-r.x0+1, bh=r.y1-r.y0+1, fill=r.n/(bw*bh);
-      if(bh<16||bh<bw*1.8||fill<.4) continue;
-      if(r.n>score){score=r.n;pick=r}
+  areas.push(full);
+  const parts=areas.map(rect=>{
+    const mask=new Uint8Array(w*h);
+    if(lifted){for(let p=0;p<w*h;p++) mask[p]=d[p*4+3]>=128?1:0}
+    else{
+      const count=new Map();
+      for(let y=rect.y0;y<=rect.y1;y++)for(let xx=rect.x0;xx<=rect.x1;xx++){const i=(y*w+xx)*4,k=(d[i]>>4)<<8|(d[i+1]>>4)<<4|d[i+2]>>4;count.set(k,(count.get(k)||0)+1)}
+      const top=[...count.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+      const bg=[(top>>8&15)*16+8,(top>>4&15)*16+8,(top&15)*16+8];
+      for(let y=rect.y0;y<=rect.y1;y++)for(let xx=rect.x0;xx<=rect.x1;xx++){const p=y*w+xx,i=p*4;mask[p]=Math.max(Math.abs(d[i]-bg[0]),Math.abs(d[i+1]-bg[1]),Math.abs(d[i+2]-bg[2]))>30?1:0}
     }
-    return pick&&toBox(pick);
-  };
-  const at=(fx,fy)=>{ // 누른 곳(원본 좌표)에서 가장 가까운 덩어리
-    const cx=Math.round(fx*S), cy=Math.round(fy*S);
-    for(let rad=0;rad<=6;rad++)for(let dy=-rad;dy<=rad;dy++)for(let dx=-rad;dx<=rad;dx++){
-      const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
-      const l=label[ny*w+nx]; if(l>=0) return toBox(regions[l]);
+    const {label,regions}=blobs(mask,w,h,rect);
+    // 책등 중간에 바탕색과 같은 띠가 있으면 조각나므로, 같은 세로줄에서 바짝 붙은 조각은 하나로 합친다
+    const groups=regions.filter(r=>r.n>=4).map(r=>({...r}));
+    for(let again=true;again;){
+      again=false;
+      for(let i=0;i<groups.length&&!again;i++)for(let j=i+1;j<groups.length&&!again;j++){
+        const a=groups[i], g=groups[j];
+        const ov=Math.min(a.x1,g.x1)-Math.max(a.x0,g.x0)+1, minW=Math.min(a.x1-a.x0,g.x1-g.x0)+1;
+        const gap=Math.max(a.y0,g.y0)-Math.min(a.y1,g.y1);
+        if(ov>=minW*.8&&gap<=4&&Math.abs((a.x1-a.x0)-(g.x1-g.x0))<=Math.max(3,minW*.25)){
+          a.x0=Math.min(a.x0,g.x0);a.x1=Math.max(a.x1,g.x1);a.y0=Math.min(a.y0,g.y0);a.y1=Math.max(a.y1,g.y1);a.n+=g.n;
+          groups.splice(j,1); again=true;
+        }
+      }
     }
-    return null;
+    const best=()=>{
+      let pick=null,score=0;
+      for(const r of groups){
+        const bw=r.x1-r.x0+1, bh=r.y1-r.y0+1, fill=r.n/(bw*bh);
+        if(bh<16||bh<bw*1.8||fill<.4) continue;
+        if(r.n>score){score=r.n;pick=r}
+      }
+      return pick;
+    };
+    return {rect,label,regions,best};
+  });
+  const toBox=r=>({x:r.x0/S,y:r.y0/S,w:(r.x1-r.x0+1)/S,h:(r.y1-r.y0+1)/S});
+  return {
+    best(){for(const p of parts){const r=p.best(); if(r) return toBox(r)} return null},
+    at(fx,fy){ // 누른 곳(원본 좌표)에서 가장 가까운 덩어리. 흰 칸 안을 누르면 칸 안에서 찾는다
+      const cx=Math.round(fx*S), cy=Math.round(fy*S);
+      const p=parts.find(p=>cx>=p.rect.x0&&cx<=p.rect.x1&&cy>=p.rect.y0&&cy<=p.rect.y1)||parts[parts.length-1];
+      for(let rad=0;rad<=6;rad++)for(let dy=-rad;dy<=rad;dy++)for(let dx=-rad;dx<=rad;dx++){
+        const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue;
+        const l=p.label[ny*w+nx]; if(l>=0) return toBox(p.regions[l]);
+      }
+      return null;
+    }
   };
-  return {best,at};
 }
 // 잘라 낸 책등은 화질을 살려 저장한다. 예전 동기화 스크립트는 시트 칸(5만 자)에 그대로 넣으므로 그때만 3만 자로 줄인다
 function spineDataUrl(canvas,box){
