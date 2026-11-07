@@ -1142,6 +1142,20 @@ function modal(html,init){
   init&&init(m);
 }
 function closeModal(){stopScan();$('#modalRoot').innerHTML=''}
+// 브라우저 기본 confirm()은 앱 내 브라우저 등에서 창 없이 바로 거절될 수 있어 쓰지 않는다
+function askConfirm(msg,okLabel='확인'){
+  return new Promise(done=>{
+    const w=document.createElement('div');
+    w.className='modal'; w.style.zIndex=30;
+    w.innerHTML=`<div class="sheet"><p style="margin:4px 0 14px;line-height:1.6">${esc(msg)}</p>
+      <div class="btns"><button class="btn ghost" data-a="0">취소</button><button class="btn" data-a="1">${esc(okLabel)}</button></div></div>`;
+    w.onclick=e=>{
+      const a=e.target.closest('[data-a]');
+      if(a||e.target===w){w.remove();done(a?.dataset.a==='1')}
+    };
+    document.body.append(w);
+  });
+}
 
 /* ================== 책 검색/추가 ================== */
 $('#addBtn').onclick=()=>openSearch();
@@ -1325,7 +1339,7 @@ function openDetail(id){
       const txt=`📚 ${b.title}${b.author?' / '+b.author:''}\n${starTxt(b.rating)}\n${b.review||''}${(b.quotes||[])[0]?`\n\n“${b.quotes[0].text}”`:''}`;
       if(navigator.share) navigator.share({text:txt}).catch(()=>{}); else {await navigator.clipboard.writeText(txt);toast('클립보드에 복사했어요')}
     };
-    m.querySelector('#dDel').onclick=()=>{if(confirm(`「${b.title}」 기록을 삭제할까요?`)){books=books.filter(x=>x.id!==b.id);save();closeModal();render();toast('삭제했어요')}};
+    m.querySelector('#dDel').onclick=async()=>{if(await askConfirm(`「${b.title}」 기록을 삭제할까요?`,'삭제')){books=books.filter(x=>x.id!==b.id);save();closeModal();render();toast('삭제했어요')}};
   });
 }
 
@@ -1357,13 +1371,19 @@ $('#exportBtn').onclick=()=>{
 };
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{
+  const f=e.target.files[0];
+  e.target.value=''; // 같은 파일을 다시 골라도 동작하게 비운다
+  if(!f) return;
+  let j;
   try{
-    const j=JSON.parse(await e.target.files[0].text());
+    j=JSON.parse(await f.text());
     if(!Array.isArray(j.books)) throw 0;
-    if(!confirm(`${j.books.length}권을 가져옵니다. 같은 기록은 덮어쓰고 나머지는 합칠까요?`)) return;
-    const map=new Map(books.map(b=>[b.id,b])); j.books.forEach(b=>map.set(b.id,b));
-    books=[...map.values()]; if(j.cfg?.goal) cfg.goal=j.cfg.goal; save(); saveCfg(); toast('가져오기 완료'); render();
-  }catch(_){toast('백업 파일을 읽지 못했어요')}
+  }catch(_){return toast('백업 파일을 읽지 못했어요')}
+  if(!await askConfirm(`${j.books.length}권을 가져옵니다. 같은 기록은 덮어쓰고 나머지는 합칠까요?`,'가져오기')) return;
+  const map=new Map(books.map(b=>[b.id,b])); j.books.forEach(b=>map.set(b.id,b));
+  books=[...map.values()]; if(j.cfg?.goal) cfg.goal=j.cfg.goal; save(); saveCfg();
+  selYear='all'; go('stack'); // 가져온 책이 바로 보이게 전체 연도의 쌓아보기로 이동
+  toast(`${j.books.length}권을 가져왔어요`);
 };
 $('#refetchAll').onclick=async e=>{
   const targets=books.filter(b=>!b.cover||!b.pages||(cfg.nlKey&&!b.heightMm)); if(!targets.length) return toast('보완할 책이 없어요');
@@ -1578,8 +1598,8 @@ $('#syncSave').onclick=async()=>{
   const ok=await syncNow();
   toast(ok?'동기화했어요':'동기화하지 못했어요');
 };
-$('#syncOff').onclick=()=>{
-  if(!confirm('이 기기의 연결을 끊을까요? 기기와 시트의 기록은 지워지지 않습니다.')) return;
+$('#syncOff').onclick=async()=>{
+  if(!await askConfirm('이 기기의 연결을 끊을까요? 기기와 시트의 기록은 지워지지 않습니다.','연결 끊기')) return;
   clearTimeout(syncTimer);
   cfg.syncUrl='';cfg.syncSecret='';saveCfg();
   syncSt.url='';syncSt.lastSync='';saveSync();syncError='';
@@ -1633,7 +1653,7 @@ $('#codeUse').onclick=()=>{
     m.querySelector('#codeApply').onclick=async()=>{
       let o;
       try{o=readCode(m.querySelector('#codeIn').value)}catch(_){return toast('연결 코드가 올바르지 않아요')}
-      if(o.u&&cfg.syncUrl&&cfg.syncUrl!==o.u&&!confirm('이 기기는 이미 다른 시트에 연결되어 있어요. 이 코드의 시트로 바꾸고 기기의 기록을 그 시트에 합칠까요?')) return;
+      if(o.u&&cfg.syncUrl&&cfg.syncUrl!==o.u&&!await askConfirm('이 기기는 이미 다른 시트에 연결되어 있어요. 이 코드의 시트로 바꾸고 기기의 기록을 그 시트에 합칠까요?')) return;
       if(o.u){cfg.syncUrl=o.u;cfg.syncSecret=o.s}
       if(o.k) cfg.kakaoKey=o.k;
       if(o.n) cfg.nlKey=o.n;
