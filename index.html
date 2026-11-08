@@ -292,7 +292,7 @@ nav .add i{background:var(--fab);width:50px;height:50px;border-radius:50%;displa
     <div class="field"><label>국립중앙도서관 인증키</label><input id="nlKey" placeholder="ISBN 서지정보 cert_key"></div>
     <div class="field"><label>Google Books API 키 (선택)</label><input id="googleKey" placeholder="없어도 됨"></div>
     <div class="btns"><button class="btn" id="keySave">저장</button><button class="btn ghost" id="keyTest">연결 테스트</button></div>
-    <pre id="testOut" class="hint hidden" style="white-space:pre-wrap;background:var(--card2);padding:10px;border-radius:8px;font-size:11px"></pre>
+    <pre id="testOut" class="hint hidden" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--card2);padding:10px;border-radius:8px;font-size:11px"></pre>
   </div>
   <div class="sec">
     <h3>구글 시트 동기화</h3>
@@ -1603,7 +1603,6 @@ $('#keyTest').onclick=async e=>{
         const n=nlToBook(d);
         lines.push(`✅ 국립중앙도서관: ${n.title}`);
         lines.push(`   해석 결과: 쪽수 ${n.pages||'?'} · 가로 ${n.widthMm||'?'}mm · 세로 ${n.heightMm||'?'}mm · 분류 ${n.category||'?'}`);
-        lines.push('   원본: '+JSON.stringify({PAGE:d.PAGE,BOOK_SIZE:d.BOOK_SIZE,SUBJECT:d.SUBJECT,KDC:d.KDC,TITLE_URL:d.TITLE_URL}));
       } else lines.push('⚠️ 국립중앙도서관: 키는 정상이지만 테스트 책의 정보가 없어요');
     }catch(err){lines.push('❌ 국립중앙도서관: '+err.message)}
   } else lines.push('⚪ 국립중앙도서관: 키 없음');
